@@ -88,6 +88,13 @@ namespace LoraDbEditor
             _treeNodes.Clear();
             var root = new Dictionary<string, TreeViewNode>();
 
+            // First, add all directories from the filesystem
+            if (Directory.Exists(_database.LorasBasePath))
+            {
+                AddDirectoriesToTree(root, _database.LorasBasePath, "");
+            }
+
+            // Then, add all files from the scanned paths
             foreach (var path in _allFilePaths)
             {
                 var parts = path.Split('/');
@@ -128,6 +135,59 @@ namespace LoraDbEditor
             var rootCollection = new ObservableCollection<TreeViewNode>();
             BuildTreeRecursive(root, rootCollection);
             FileTreeView.ItemsSource = rootCollection;
+        }
+
+        private void AddDirectoriesToTree(Dictionary<string, TreeViewNode> root, string basePath, string relativePath)
+        {
+            string currentDirPath = string.IsNullOrEmpty(relativePath) 
+                ? basePath 
+                : Path.Combine(basePath, relativePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+
+            if (!Directory.Exists(currentDirPath))
+                return;
+
+            var directories = Directory.GetDirectories(currentDirPath);
+            
+            foreach (var dir in directories)
+            {
+                var dirName = Path.GetFileName(dir);
+                var dirRelativePath = string.IsNullOrEmpty(relativePath) 
+                    ? dirName 
+                    : relativePath + "/" + dirName;
+
+                // Navigate to the right level in the tree
+                var parts = dirRelativePath.Split('/');
+                var currentLevel = root;
+                string currentPath = "";
+
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    var part = parts[i];
+                    currentPath = string.IsNullOrEmpty(currentPath) ? part : currentPath + "/" + part;
+
+                    if (!currentLevel.ContainsKey(part))
+                    {
+                        var node = new TreeViewNode
+                        {
+                            Name = part,
+                            FullPath = currentPath,
+                            IsFile = false
+                        };
+                        currentLevel[part] = node;
+                    }
+
+                    // Convert children to dictionary for next level
+                    var nextLevel = new Dictionary<string, TreeViewNode>();
+                    foreach (var child in currentLevel[part].Children)
+                    {
+                        nextLevel[child.Name] = child;
+                    }
+                    currentLevel = nextLevel;
+                }
+
+                // Recursively add subdirectories
+                AddDirectoriesToTree(root, basePath, dirRelativePath);
+            }
         }
 
         private void BuildTreeRecursive(Dictionary<string, TreeViewNode> dict, ObservableCollection<TreeViewNode> collection)
