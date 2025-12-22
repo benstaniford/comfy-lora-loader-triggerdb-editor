@@ -422,6 +422,237 @@ namespace LoraDbEditor
             RenameSelectedLora();
         }
 
+        private void NewFolderMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            CreateNewFolder();
+        }
+
+        private void CreateNewFolder()
+        {
+            // Determine parent directory based on selection
+            string parentDirectory = "";
+            if (FileTreeView.SelectedItem is TreeViewNode node)
+            {
+                if (node.IsFile)
+                {
+                    // If a file is selected, create folder in its parent directory
+                    var parentPath = Path.GetDirectoryName(node.FullPath)?.Replace("\\", "/");
+                    parentDirectory = parentPath ?? "";
+                }
+                else
+                {
+                    // If a folder is selected, create subfolder inside it
+                    parentDirectory = node.FullPath;
+                }
+            }
+
+            // Show create folder dialog
+            var dialog = new Window
+            {
+                Title = "Create New Folder",
+                Width = 450,
+                Height = 180,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = (SolidColorBrush)FindResource("BackgroundBrush"),
+                ResizeMode = ResizeMode.NoResize
+            };
+
+            var grid = new Grid { Margin = new Thickness(15) };
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var locationText = string.IsNullOrEmpty(parentDirectory) 
+                ? "Location: (root)" 
+                : $"Location: {parentDirectory}";
+
+            var locationLabel = new TextBlock
+            {
+                Text = locationText,
+                Foreground = (SolidColorBrush)FindResource("TextBrush"),
+                Margin = new Thickness(0, 0, 0, 15),
+                Opacity = 0.7
+            };
+            Grid.SetRow(locationLabel, 0);
+            grid.Children.Add(locationLabel);
+
+            var label = new TextBlock
+            {
+                Text = "Folder name:",
+                Foreground = (SolidColorBrush)FindResource("TextBrush"),
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            Grid.SetRow(label, 1);
+            grid.Children.Add(label);
+
+            var textBox = new TextBox
+            {
+                Text = "",
+                Foreground = (SolidColorBrush)FindResource("TextBrush"),
+                Background = (SolidColorBrush)FindResource("SurfaceBrush"),
+                BorderBrush = (SolidColorBrush)FindResource("BorderBrush"),
+                Padding = new Thickness(5),
+                FontSize = 13
+            };
+            Grid.SetRow(textBox, 2);
+            grid.Children.Add(textBox);
+
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 15, 0, 0)
+            };
+            Grid.SetRow(buttonPanel, 3);
+
+            var okButton = new Button
+            {
+                Content = "Create",
+                Width = 80,
+                Height = 30,
+                Margin = new Thickness(0, 0, 10, 0),
+                IsDefault = true
+            };
+
+            var cancelButton = new Button
+            {
+                Content = "Cancel",
+                Width = 80,
+                Height = 30,
+                IsCancel = true
+            };
+
+            bool dialogResult = false;
+            okButton.Click += (s, e) =>
+            {
+                dialogResult = true;
+                dialog.Close();
+            };
+
+            cancelButton.Click += (s, e) =>
+            {
+                dialog.Close();
+            };
+
+            buttonPanel.Children.Add(okButton);
+            buttonPanel.Children.Add(cancelButton);
+            grid.Children.Add(buttonPanel);
+
+            dialog.Content = grid;
+            textBox.Focus();
+
+            dialog.ShowDialog();
+
+            if (!dialogResult)
+                return;
+
+            var folderName = textBox.Text.Trim();
+
+            // Validate folder name
+            if (string.IsNullOrWhiteSpace(folderName))
+            {
+                MessageBox.Show("Folder name cannot be empty.", "Invalid Name", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Check for invalid characters
+            var invalidChars = Path.GetInvalidFileNameChars();
+            if (folderName.IndexOfAny(invalidChars) >= 0 || folderName.Contains("/") || folderName.Contains("\\"))
+            {
+                MessageBox.Show("Folder name contains invalid characters.", "Invalid Name", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Build full folder path
+            var folderPath = string.IsNullOrEmpty(parentDirectory) 
+                ? folderName 
+                : parentDirectory + "/" + folderName;
+            var fullDiskPath = Path.Combine(_database.LorasBasePath, folderPath);
+
+            // Check if folder already exists
+            if (Directory.Exists(fullDiskPath))
+            {
+                MessageBox.Show($"A folder already exists at: {folderPath}", "Folder Exists", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                // Create the directory
+                Directory.CreateDirectory(fullDiskPath);
+
+                // Refresh file list and tree view
+                _allFilePaths = _scanner.ScanForLoraFiles();
+                BuildTreeView();
+                SearchComboBox.ItemsSource = _allFilePaths;
+
+                // Try to select the new folder in the tree
+                ExpandAndSelectFolder(folderPath);
+
+                StatusText.Text = $"Created folder: {folderPath}";
+                MessageBox.Show($"Successfully created folder:\n\n{folderPath}", 
+                    "Folder Created", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error creating folder: {ex.Message}", "Create Folder Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExpandAndSelectFolder(string folderPath)
+        {
+            // This is a best-effort attempt to expand and select the new folder
+            // Walk through the tree to find and expand the path
+            var parts = folderPath.Split('/');
+            var nodes = FileTreeView.ItemsSource as ObservableCollection<TreeViewNode>;
+            
+            if (nodes == null)
+                return;
+
+            TreeViewNode? currentNode = null;
+            var currentCollection = nodes;
+
+            foreach (var part in parts)
+            {
+                currentNode = currentCollection.FirstOrDefault(n => n.Name == part);
+                if (currentNode == null)
+                    break;
+
+                currentCollection = currentNode.Children;
+            }
+
+            if (currentNode != null)
+            {
+                // Find the TreeViewItem and expand/select it
+                SelectTreeViewNode(FileTreeView, currentNode);
+            }
+        }
+
+        private void SelectTreeViewNode(ItemsControl parent, TreeViewNode node)
+        {
+            foreach (var item in parent.Items)
+            {
+                var container = parent.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
+                if (container != null && container.DataContext == node)
+                {
+                    container.IsSelected = true;
+                    container.BringIntoView();
+                    return;
+                }
+
+                if (container != null)
+                {
+                    SelectTreeViewNode(container, node);
+                }
+            }
+        }
+
         private void RenameSelectedLora()
         {
             if (FileTreeView.SelectedItem is not TreeViewNode node || !node.IsFile)
