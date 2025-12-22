@@ -36,19 +36,23 @@ The `lora-triggers.json` file uses a specific structure:
 
 - **Keys**: Relative file paths WITHOUT the `.safetensors` extension (e.g., `"chroma/80sFantasyMovieChroma"`)
 - **Newlines**: Encoded as `\n` in strings (e.g., `"trigger1\nRecommended Strength: 1.0"`)
-- **file_id**: Optional field, may be absent, `null`, or `"unknown"` for legacy entries
+- **Required fields**: `active_triggers`, `all_triggers`
+- **Optional fields**: `file_id`, `source_url`, `suggested_strength`, `notes` (may be absent, `null`, or `"unknown"` for legacy entries)
 
 ```json
 {
   "path/to/lora": {
     "active_triggers": "trigger1, trigger2",
     "all_triggers": "trigger1, trigger2\nRecommended Strength: 1.0",
-    "file_id": "abc123..."
+    "file_id": "abc123...",
+    "source_url": "https://civitai.com/models/12345",
+    "suggested_strength": "0.8-1.2",
+    "notes": "Works well with landscapes\nBest at 1024x1024"
   }
 }
 ```
 
-When deserializing, the dictionary key becomes the `Path` property, and the full filesystem path is constructed by appending `.safetensors`.
+When deserializing, the dictionary key becomes the `Path` property, and the full filesystem path is constructed by appending `.safetensors`. Optional fields that are empty strings or whitespace-only are stored as `null` in the JSON.
 
 ## File ID Algorithm
 
@@ -82,7 +86,7 @@ This algorithm matches the Python implementation in `~/dot-files/scripts/get-fil
 
 ### Key Components
 
-- **LoraEntry Model**: Hybrid model with JSON-serialized properties (`active_triggers`, `all_triggers`, `file_id`) and runtime properties marked `[JsonIgnore]` (`Path`, `FullPath`, `FileExists`, `FileIdValid`, `CalculatedFileId`)
+- **LoraEntry Model**: Hybrid model with JSON-serialized properties (`active_triggers`, `all_triggers`, `file_id`, `source_url`, `suggested_strength`, `notes`) and runtime properties marked `[JsonIgnore]` (`Path`, `FullPath`, `FileExists`, `FileIdValid`, `CalculatedFileId`). Optional fields are nullable and stored as `null` when empty.
 
 - **FileSystemScanner**: Implements fuzzy search by scoring paths based on character match patterns (exact match > starts with > contains > ordered characters)
 
@@ -95,7 +99,12 @@ This algorithm matches the Python implementation in `~/dot-files/scripts/get-fil
   - Editable ComboBox with fuzzy search
   - File path title
   - File ID section with validation warnings
-  - Active/All triggers text boxes (All triggers converts `\n` to actual newlines for display)
+  - Editable text fields:
+    - Active Triggers (single line)
+    - All Triggers (multiline, converts `\n` to actual newlines for display)
+    - Source URL (single line, supports drag and drop)
+    - Suggested Strength (single line)
+    - Notes (multiline, converts `\n` to actual newlines for display)
 
 ## Theme System
 
@@ -118,4 +127,12 @@ When adding new UI controls, use these resource keys to maintain visual consiste
 
 - **Fuzzy Search**: Implemented in `FileSystemScanner.FuzzySearch()` with scoring system. Updates happen via `TextChanged` event on the ComboBox's internal `PART_EditableTextBox`.
 
-- **Unsaved Changes Tracking**: `_hasUnsavedChanges` flag is set when file IDs are updated, enables Save button, and triggers confirmation dialog on window close.
+- **Unsaved Changes Tracking**: `_hasUnsavedChanges` flag is set when any field is edited, enables Save button, and triggers confirmation dialog on window close.
+
+- **Editable Fields**: All fields (Active Triggers, All Triggers, Source URL, Suggested Strength, Notes) are editable. TextChanged events automatically update the in-memory entry and mark the database as having unsaved changes. The `_isLoadingEntry` flag prevents TextChanged handlers from firing during initial data load.
+
+- **Drag and Drop URLs**: The Source URL field supports drag and drop from browsers. It handles multiple data formats (`DataFormats.Text`, `DataFormats.UnicodeText`, `DataFormats.Html`) and extracts URLs from HTML using regex pattern matching for `href` attributes. Both `PreviewDragOver` and `Drop` events are handled.
+
+- **Optional Field Serialization**: Optional fields (`source_url`, `suggested_strength`, `notes`) are stored as `null` in JSON when empty or whitespace-only. This is handled by checking `string.IsNullOrWhiteSpace()` before assignment in TextChanged handlers.
+
+- **Newline Encoding**: Both `all_triggers` and `notes` fields support multiline text. Actual newlines (`Environment.NewLine`) are converted to `\n` for JSON storage and converted back for display. This ensures consistent serialization across different platforms.

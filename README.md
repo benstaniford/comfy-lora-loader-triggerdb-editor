@@ -49,14 +49,19 @@ The application expects files in these locations:
 1. Expand folders in the left panel
 2. Click on any `.safetensors` file to view its details
 
-### Viewing Details
+### Viewing and Editing Details
 
-Once a file is selected, the right panel shows:
+Once a file is selected, the right panel shows editable fields:
 
 - **File Path** - The relative path used as the database key
 - **File ID** - SHA1 hash identifier for the file
-- **Active Triggers** - Currently active trigger words
-- **All Triggers** - Complete list of trigger words (with descriptions)
+- **Active Triggers** - Currently active trigger words (editable)
+- **All Triggers** - Complete list of trigger words with descriptions (editable, supports multiline)
+- **Source URL** - Optional URL where the LoRA was downloaded from (supports drag and drop from browser)
+- **Suggested Strength** - Optional recommended strength value
+- **Notes** - Optional notes about the LoRA (editable, supports multiline)
+
+All editable fields automatically save changes when you click "Save Database".
 
 ### File ID Validation
 
@@ -107,9 +112,15 @@ The database uses JSON with newlines encoded as `\n`:
   "path/to/lora": {
     "active_triggers": "trigger1, trigger2",
     "all_triggers": "trigger1, trigger2\nRecommended Strength: 1.0",
-    "file_id": "abc123..."
+    "file_id": "abc123...",
+    "source_url": "https://civitai.com/models/12345",
+    "suggested_strength": "0.8-1.2",
+    "notes": "Works well with landscapes\nBest at 1024x1024"
   }
 }
 ```
 
-Note: The path keys do NOT include the `.safetensors` extension.
+**Notes:**
+- The path keys do NOT include the `.safetensors` extension
+- `source_url`, `suggested_strength`, and `notes` are optional fields
+- Newlines in `all_triggers` and `notes` are encoded as `\n`

@@ -13,6 +13,15 @@ namespace LoraDbEditor.Models
         [JsonProperty("file_id")]
         public string? FileId { get; set; }
 
+        [JsonProperty("source_url")]
+        public string? SourceUrl { get; set; }
+
+        [JsonProperty("suggested_strength")]
+        public string? SuggestedStrength { get; set; }
+
+        [JsonProperty("notes")]
+        public string? Notes { get; set; }
+
         [JsonIgnore]
         public string Path { get; set; } = string.Empty;
 

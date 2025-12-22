@@ -304,7 +304,7 @@ namespace LoraDbEditor
                     FileIdWarningBorder.Visibility = Visibility.Collapsed;
                 }
 
-                // Display triggers (suppress TextChanged events while loading)
+                // Display all fields (suppress TextChanged events while loading)
                 _isLoadingEntry = true;
                 try
                 {
@@ -318,6 +318,20 @@ namespace LoraDbEditor
                     else
                     {
                         AllTriggersText.Text = "";
+                    }
+
+                    // Load new optional fields
+                    SourceUrlText.Text = entry.SourceUrl ?? "";
+                    SuggestedStrengthText.Text = entry.SuggestedStrength ?? "";
+
+                    // Convert \n to actual newlines for notes display
+                    if (!string.IsNullOrEmpty(entry.Notes))
+                    {
+                        NotesText.Text = entry.Notes.Replace("\\n", Environment.NewLine);
+                    }
+                    else
+                    {
+                        NotesText.Text = "";
                     }
                 }
                 finally
@@ -429,6 +443,129 @@ namespace LoraDbEditor
             // Convert actual newlines to \n for storage
             var textWithEncodedNewlines = AllTriggersText.Text.Replace(Environment.NewLine, "\\n");
             _currentEntry.AllTriggers = textWithEncodedNewlines;
+
+            // If this is a new entry, add it to the database
+            if (_isNewEntry && _currentEntry.FileExists)
+            {
+                _database.AddEntry(_currentEntry.Path, _currentEntry);
+                _isNewEntry = false; // No longer new since it's in the database
+            }
+
+            // Mark as changed
+            _hasUnsavedChanges = true;
+            SaveButton.IsEnabled = true;
+            StatusText.Text = $"Modified: {_currentEntry.Path}. Don't forget to save!";
+        }
+
+        private void SourceUrlText_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoadingEntry || _currentEntry == null)
+                return;
+
+            // Update the entry
+            _currentEntry.SourceUrl = string.IsNullOrWhiteSpace(SourceUrlText.Text) ? null : SourceUrlText.Text;
+
+            // If this is a new entry, add it to the database
+            if (_isNewEntry && _currentEntry.FileExists)
+            {
+                _database.AddEntry(_currentEntry.Path, _currentEntry);
+                _isNewEntry = false; // No longer new since it's in the database
+            }
+
+            // Mark as changed
+            _hasUnsavedChanges = true;
+            SaveButton.IsEnabled = true;
+            StatusText.Text = $"Modified: {_currentEntry.Path}. Don't forget to save!";
+        }
+
+        private void SourceUrlText_PreviewDragOver(object sender, DragEventArgs e)
+        {
+            // Accept text or file list data
+            if (e.Data.GetDataPresent(DataFormats.Text) ||
+                e.Data.GetDataPresent(DataFormats.UnicodeText) ||
+                e.Data.GetDataPresent(DataFormats.Html))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+        }
+
+        private void SourceUrlText_Drop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                string? url = null;
+
+                // Try to get URL from various data formats
+                if (e.Data.GetDataPresent(DataFormats.Text))
+                {
+                    url = e.Data.GetData(DataFormats.Text) as string;
+                }
+                else if (e.Data.GetDataPresent(DataFormats.UnicodeText))
+                {
+                    url = e.Data.GetData(DataFormats.UnicodeText) as string;
+                }
+                else if (e.Data.GetDataPresent(DataFormats.Html))
+                {
+                    // Extract URL from HTML content
+                    var html = e.Data.GetData(DataFormats.Html) as string;
+                    if (!string.IsNullOrEmpty(html))
+                    {
+                        // Simple extraction - look for href attribute
+                        var match = System.Text.RegularExpressions.Regex.Match(html, @"href=""([^""]+)""");
+                        if (match.Success)
+                        {
+                            url = match.Groups[1].Value;
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    SourceUrlText.Text = url.Trim();
+                }
+
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error processing dropped URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void SuggestedStrengthText_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoadingEntry || _currentEntry == null)
+                return;
+
+            // Update the entry
+            _currentEntry.SuggestedStrength = string.IsNullOrWhiteSpace(SuggestedStrengthText.Text) ? null : SuggestedStrengthText.Text;
+
+            // If this is a new entry, add it to the database
+            if (_isNewEntry && _currentEntry.FileExists)
+            {
+                _database.AddEntry(_currentEntry.Path, _currentEntry);
+                _isNewEntry = false; // No longer new since it's in the database
+            }
+
+            // Mark as changed
+            _hasUnsavedChanges = true;
+            SaveButton.IsEnabled = true;
+            StatusText.Text = $"Modified: {_currentEntry.Path}. Don't forget to save!";
+        }
+
+        private void NotesText_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoadingEntry || _currentEntry == null)
+                return;
+
+            // Convert actual newlines to \n for storage
+            var textWithEncodedNewlines = NotesText.Text.Replace(Environment.NewLine, "\\n");
+            _currentEntry.Notes = string.IsNullOrWhiteSpace(textWithEncodedNewlines) ? null : textWithEncodedNewlines;
 
             // If this is a new entry, add it to the database
             if (_isNewEntry && _currentEntry.FileExists)

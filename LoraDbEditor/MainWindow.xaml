@@ -171,12 +171,49 @@
                         <TextBlock Text="All Triggers" FontWeight="Bold" FontSize="13"
                                   Margin="0,0,0,5" Foreground="{StaticResource TextBrush}"/>
                         <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
-                               Padding="10" Background="{StaticResource BackgroundBrush}">
+                               Padding="10" Margin="0,0,0,15" Background="{StaticResource BackgroundBrush}">
                             <TextBox x:Name="AllTriggersText" TextWrapping="Wrap"
                                     MinHeight="100" AcceptsReturn="True"
                                     BorderThickness="0" Background="Transparent"
                                     Foreground="{StaticResource TextBrush}"
                                     TextChanged="AllTriggersText_TextChanged"/>
+                        </Border>
+
+                        <!-- Source URL Section -->
+                        <TextBlock Text="Source URL" FontWeight="Bold" FontSize="13"
+                                  Margin="0,0,0,5" Foreground="{StaticResource TextBrush}"/>
+                        <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                               Padding="10" Margin="0,0,0,15" Background="{StaticResource BackgroundBrush}">
+                            <TextBox x:Name="SourceUrlText" TextWrapping="Wrap"
+                                    BorderThickness="0" Background="Transparent"
+                                    Foreground="{StaticResource TextBrush}"
+                                    AllowDrop="True"
+                                    PreviewDragOver="SourceUrlText_PreviewDragOver"
+                                    Drop="SourceUrlText_Drop"
+                                    TextChanged="SourceUrlText_TextChanged"/>
+                        </Border>
+
+                        <!-- Suggested Strength Section -->
+                        <TextBlock Text="Suggested Strength" FontWeight="Bold" FontSize="13"
+                                  Margin="0,0,0,5" Foreground="{StaticResource TextBrush}"/>
+                        <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                               Padding="10" Margin="0,0,0,15" Background="{StaticResource BackgroundBrush}">
+                            <TextBox x:Name="SuggestedStrengthText" TextWrapping="Wrap"
+                                    BorderThickness="0" Background="Transparent"
+                                    Foreground="{StaticResource TextBrush}"
+                                    TextChanged="SuggestedStrengthText_TextChanged"/>
+                        </Border>
+
+                        <!-- Notes Section -->
+                        <TextBlock Text="Notes" FontWeight="Bold" FontSize="13"
+                                  Margin="0,0,0,5" Foreground="{StaticResource TextBrush}"/>
+                        <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                               Padding="10" Background="{StaticResource BackgroundBrush}">
+                            <TextBox x:Name="NotesText" TextWrapping="Wrap"
+                                    MinHeight="80" AcceptsReturn="True"
+                                    BorderThickness="0" Background="Transparent"
+                                    Foreground="{StaticResource TextBrush}"
+                                    TextChanged="NotesText_TextChanged"/>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
