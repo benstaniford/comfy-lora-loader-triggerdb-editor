@@ -15,6 +15,7 @@ namespace LoraDbEditor
         private ObservableCollection<TreeViewNode> _treeNodes = new();
         private LoraEntry? _currentEntry;
         private bool _isNewEntry = false;
+        private bool _isLoadingEntry = false;
         private bool _hasUnsavedChanges = false;
 
         public MainWindow()
@@ -206,6 +207,30 @@ namespace LoraDbEditor
                         entry.CalculatedFileId = FileIdCalculator.CalculateFileId(entry.FullPath);
                     }
                 }
+                else
+                {
+                    // Entry exists in database - ensure runtime properties are populated
+                    entry.FileExists = System.IO.File.Exists(entry.FullPath);
+
+                    if (entry.FileExists)
+                    {
+                        try
+                        {
+                            entry.CalculatedFileId = FileIdCalculator.CalculateFileId(entry.FullPath);
+                            entry.FileIdValid = !string.IsNullOrEmpty(entry.FileId) &&
+                                               entry.FileId != "unknown" &&
+                                               entry.FileId == entry.CalculatedFileId;
+                        }
+                        catch
+                        {
+                            entry.FileIdValid = false;
+                        }
+                    }
+                    else
+                    {
+                        entry.FileIdValid = false;
+                    }
+                }
 
                 _currentEntry = entry;
 
@@ -279,17 +304,25 @@ namespace LoraDbEditor
                     FileIdWarningBorder.Visibility = Visibility.Collapsed;
                 }
 
-                // Display triggers
-                ActiveTriggersText.Text = entry.ActiveTriggers ?? "(none)";
+                // Display triggers (suppress TextChanged events while loading)
+                _isLoadingEntry = true;
+                try
+                {
+                    ActiveTriggersText.Text = entry.ActiveTriggers ?? "";
 
-                // Convert \n to actual newlines for display
-                if (!string.IsNullOrEmpty(entry.AllTriggers))
-                {
-                    AllTriggersText.Text = entry.AllTriggers.Replace("\\n", Environment.NewLine);
+                    // Convert \n to actual newlines for display
+                    if (!string.IsNullOrEmpty(entry.AllTriggers))
+                    {
+                        AllTriggersText.Text = entry.AllTriggers.Replace("\\n", Environment.NewLine);
+                    }
+                    else
+                    {
+                        AllTriggersText.Text = "";
+                    }
                 }
-                else
+                finally
                 {
-                    AllTriggersText.Text = "(none)";
+                    _isLoadingEntry = false;
                 }
 
                 StatusText.Text = $"Loaded: {path}";
@@ -312,14 +345,20 @@ namespace LoraDbEditor
             {
                 if (_isNewEntry)
                 {
-                    // Create new database entry
-                    var newEntry = new LoraEntry
+                    // Set the file ID and add to database if not already added
+                    _currentEntry.FileId = _currentEntry.CalculatedFileId;
+
+                    // Check if entry was already added by TextChanged handlers
+                    if (_database.GetEntry(_currentEntry.Path) == null)
                     {
-                        ActiveTriggers = "",
-                        AllTriggers = "",
-                        FileId = _currentEntry.CalculatedFileId
-                    };
-                    _database.AddEntry(_currentEntry.Path, newEntry);
+                        _database.AddEntry(_currentEntry.Path, _currentEntry);
+                    }
+                    else
+                    {
+                        // Entry was already added, just update the file ID
+                        _database.UpdateFileId(_currentEntry.Path, _currentEntry.CalculatedFileId);
+                    }
+
                     StatusText.Text = $"Created new record for {_currentEntry.Path}. Don't forget to save!";
                 }
                 else
@@ -359,6 +398,49 @@ namespace LoraDbEditor
                 StatusText.Text = "Error saving database.";
                 SaveButton.IsEnabled = true;
             }
+        }
+
+        private void ActiveTriggersText_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoadingEntry || _currentEntry == null)
+                return;
+
+            // Update the entry
+            _currentEntry.ActiveTriggers = ActiveTriggersText.Text;
+
+            // If this is a new entry, add it to the database
+            if (_isNewEntry && _currentEntry.FileExists)
+            {
+                _database.AddEntry(_currentEntry.Path, _currentEntry);
+                _isNewEntry = false; // No longer new since it's in the database
+            }
+
+            // Mark as changed
+            _hasUnsavedChanges = true;
+            SaveButton.IsEnabled = true;
+            StatusText.Text = $"Modified: {_currentEntry.Path}. Don't forget to save!";
+        }
+
+        private void AllTriggersText_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoadingEntry || _currentEntry == null)
+                return;
+
+            // Convert actual newlines to \n for storage
+            var textWithEncodedNewlines = AllTriggersText.Text.Replace(Environment.NewLine, "\\n");
+            _currentEntry.AllTriggers = textWithEncodedNewlines;
+
+            // If this is a new entry, add it to the database
+            if (_isNewEntry && _currentEntry.FileExists)
+            {
+                _database.AddEntry(_currentEntry.Path, _currentEntry);
+                _isNewEntry = false; // No longer new since it's in the database
+            }
+
+            // Mark as changed
+            _hasUnsavedChanges = true;
+            SaveButton.IsEnabled = true;
+            StatusText.Text = $"Modified: {_currentEntry.Path}. Don't forget to save!";
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

@@ -163,7 +163,8 @@
                                Padding="10" Margin="0,0,0,15" Background="{StaticResource BackgroundBrush}">
                             <TextBox x:Name="ActiveTriggersText" TextWrapping="Wrap"
                                     BorderThickness="0" Background="Transparent"
-                                    IsReadOnly="True" Foreground="{StaticResource TextBrush}"/>
+                                    Foreground="{StaticResource TextBrush}"
+                                    TextChanged="ActiveTriggersText_TextChanged"/>
                         </Border>
 
                         <!-- All Triggers Section -->
@@ -174,7 +175,8 @@
                             <TextBox x:Name="AllTriggersText" TextWrapping="Wrap"
                                     MinHeight="100" AcceptsReturn="True"
                                     BorderThickness="0" Background="Transparent"
-                                    IsReadOnly="True" Foreground="{StaticResource TextBrush}"/>
+                                    Foreground="{StaticResource TextBrush}"
+                                    TextChanged="AllTriggersText_TextChanged"/>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
