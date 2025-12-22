@@ -37,7 +37,8 @@ The `lora-triggers.json` file uses a specific structure:
 - **Keys**: Relative file paths WITHOUT the `.safetensors` extension (e.g., `"chroma/80sFantasyMovieChroma"`)
 - **Newlines**: Encoded as `\n` in strings (e.g., `"trigger1\nRecommended Strength: 1.0"`)
 - **Required fields**: `active_triggers`, `all_triggers`
-- **Optional fields**: `file_id`, `source_url`, `suggested_strength`, `notes` (may be absent, `null`, or `"unknown"` for legacy entries)
+- **Optional fields**: `file_id`, `source_url`, `suggested_strength`, `notes`, `gallery` (may be absent, `null`, or `"unknown"` for legacy entries)
+- **Gallery field**: Array of filenames (not full paths) stored in `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers-pictures\`
 
 ```json
 {
@@ -47,7 +48,11 @@ The `lora-triggers.json` file uses a specific structure:
     "file_id": "abc123...",
     "source_url": "https://civitai.com/models/12345",
     "suggested_strength": "0.8-1.2",
-    "notes": "Works well with landscapes\nBest at 1024x1024"
+    "notes": "Works well with landscapes\nBest at 1024x1024",
+    "gallery": [
+      "path_to_lora_20231201120000.png",
+      "path_to_lora_20231201120030.jpg"
+    ]
   }
 }
 ```
@@ -86,7 +91,7 @@ This algorithm matches the Python implementation in `~/dot-files/scripts/get-fil
 
 ### Key Components
 
-- **LoraEntry Model**: Hybrid model with JSON-serialized properties (`active_triggers`, `all_triggers`, `file_id`, `source_url`, `suggested_strength`, `notes`) and runtime properties marked `[JsonIgnore]` (`Path`, `FullPath`, `FileExists`, `FileIdValid`, `CalculatedFileId`). Optional fields are nullable and stored as `null` when empty.
+- **LoraEntry Model**: Hybrid model with JSON-serialized properties (`active_triggers`, `all_triggers`, `file_id`, `source_url`, `suggested_strength`, `notes`, `gallery`) and runtime properties marked `[JsonIgnore]` (`Path`, `FullPath`, `FileExists`, `FileIdValid`, `CalculatedFileId`). Optional fields are nullable and stored as `null` when empty. Gallery is a `List<string>` of filenames.
 
 - **FileSystemScanner**: Implements fuzzy search by scoring paths based on character match patterns (exact match > starts with > contains > ordered characters)
 
@@ -105,6 +110,11 @@ This algorithm matches the Python implementation in `~/dot-files/scripts/get-fil
     - Source URL (single line, supports drag and drop)
     - Suggested Strength (single line)
     - Notes (multiline, converts `\n` to actual newlines for display)
+  - Gallery:
+    - Horizontal scrollable panel with 256x256 thumbnails
+    - Images are clickable to open in default viewer
+    - "Add Image" box accepts drag and drop of image files
+    - Supported formats: JPG, JPEG, PNG, BMP, GIF, WEBP
 
 ## Theme System
 
@@ -136,3 +146,5 @@ When adding new UI controls, use these resource keys to maintain visual consiste
 - **Optional Field Serialization**: Optional fields (`source_url`, `suggested_strength`, `notes`) are stored as `null` in JSON when empty or whitespace-only. This is handled by checking `string.IsNullOrWhiteSpace()` before assignment in TextChanged handlers.
 
 - **Newline Encoding**: The `active_triggers`, `all_triggers`, and `notes` fields support multiline text. Actual newlines (`Environment.NewLine`) are converted to `\n` for JSON storage and converted back for display. This ensures consistent serialization across different platforms.
+
+- **Gallery Management**: The gallery is stored as an array of filenames in the JSON. Image files are stored in a centralized folder (`lora-triggers-pictures`). When adding an image via drag and drop, the file is copied with a unique name format: `{safePath}_{timestamp}{extension}`, where `safePath` is the LoRA path with slashes replaced by underscores. The `LoadGallery()` method dynamically creates Border+Image controls and inserts them before the "Add Image" box. Clicking an image opens it using `Process.Start()` with `UseShellExecute = true`.

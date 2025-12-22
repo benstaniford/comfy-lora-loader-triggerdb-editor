@@ -218,12 +218,41 @@
                         <TextBlock Text="Notes" FontWeight="Bold" FontSize="13"
                                   Margin="0,0,0,5" Foreground="{StaticResource TextBrush}"/>
                         <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
-                               Padding="10" Background="{StaticResource BackgroundBrush}">
+                               Padding="10" Margin="0,0,0,15" Background="{StaticResource BackgroundBrush}">
                             <TextBox x:Name="NotesText" TextWrapping="Wrap"
                                     MinHeight="80" AcceptsReturn="True"
                                     BorderThickness="0" Background="Transparent"
                                     Foreground="{StaticResource TextBrush}"
                                     TextChanged="NotesText_TextChanged"/>
+                        </Border>
+
+                        <!-- Gallery Section -->
+                        <TextBlock Text="Gallery" FontWeight="Bold" FontSize="13"
+                                  Margin="0,0,0,5" Foreground="{StaticResource TextBrush}"/>
+                        <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                               Padding="10" Background="{StaticResource BackgroundBrush}">
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                <StackPanel x:Name="GalleryPanel" Orientation="Horizontal">
+                                    <!-- Gallery images will be added here dynamically -->
+
+                                    <!-- Add Image Box -->
+                                    <Border x:Name="AddImageBox" Width="256" Height="256"
+                                           BorderThickness="2" BorderBrush="{StaticResource BorderBrush}"
+                                           Background="{StaticResource SurfaceBrush}"
+                                           AllowDrop="True"
+                                           DragOver="AddImageBox_DragOver"
+                                           Drop="AddImageBox_Drop"
+                                           Margin="0,0,10,0">
+                                        <TextBlock Text="Add Image&#x0a;(Drag and Drop)"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  TextAlignment="Center"
+                                                  Foreground="{StaticResource TextBrush}"
+                                                  FontSize="14"
+                                                  Opacity="0.6"/>
+                                    </Border>
+                                </StackPanel>
+                            </ScrollViewer>
                         </Border>
                     </StackPanel>
                 </ScrollViewer>

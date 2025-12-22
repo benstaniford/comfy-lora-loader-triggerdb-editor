@@ -22,6 +22,9 @@ namespace LoraDbEditor.Models
         [JsonProperty("notes")]
         public string? Notes { get; set; }
 
+        [JsonProperty("gallery")]
+        public List<string>? Gallery { get; set; }
+
         [JsonIgnore]
         public string Path { get; set; } = string.Empty;
 

@@ -11,6 +11,7 @@ namespace LoraDbEditor
     {
         private readonly LoraDatabase _database;
         private readonly FileSystemScanner _scanner;
+        private readonly string _galleryBasePath;
         private List<string> _allFilePaths = new();
         private ObservableCollection<TreeViewNode> _treeNodes = new();
         private LoraEntry? _currentEntry;
@@ -23,6 +24,16 @@ namespace LoraDbEditor
             InitializeComponent();
             _database = new LoraDatabase();
             _scanner = new FileSystemScanner(_database.LorasBasePath);
+
+            // Set up gallery base path
+            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            _galleryBasePath = System.IO.Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers-pictures");
+
+            // Ensure gallery directory exists
+            if (!Directory.Exists(_galleryBasePath))
+            {
+                Directory.CreateDirectory(_galleryBasePath);
+            }
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -350,6 +361,9 @@ namespace LoraDbEditor
                 // Update the source URL link visibility after loading is complete
                 UpdateSourceUrlLink();
 
+                // Load gallery images
+                LoadGallery();
+
                 StatusText.Text = $"Loaded: {path}";
             }
             catch (Exception ex)
@@ -627,6 +641,167 @@ namespace LoraDbEditor
             _hasUnsavedChanges = true;
             SaveButton.IsEnabled = true;
             StatusText.Text = $"Modified: {_currentEntry.Path}. Don't forget to save!";
+        }
+
+        private void LoadGallery()
+        {
+            // Clear existing gallery images (but keep the Add Image box)
+            var itemsToRemove = GalleryPanel.Children.OfType<Border>()
+                .Where(b => b != AddImageBox)
+                .ToList();
+
+            foreach (var item in itemsToRemove)
+            {
+                GalleryPanel.Children.Remove(item);
+            }
+
+            if (_currentEntry?.Gallery == null || _currentEntry.Gallery.Count == 0)
+                return;
+
+            // Load each image
+            for (int i = 0; i < _currentEntry.Gallery.Count; i++)
+            {
+                var imageName = _currentEntry.Gallery[i];
+                var imagePath = System.IO.Path.Combine(_galleryBasePath, imageName);
+
+                if (System.IO.File.Exists(imagePath))
+                {
+                    try
+                    {
+                        var border = new Border
+                        {
+                            Width = 256,
+                            Height = 256,
+                            Margin = new Thickness(0, 0, 10, 0),
+                            BorderThickness = new Thickness(1),
+                            BorderBrush = (SolidColorBrush)FindResource("BorderBrush"),
+                            Background = (SolidColorBrush)FindResource("SurfaceBrush"),
+                            Cursor = Cursors.Hand,
+                            Tag = imagePath // Store the full path in Tag
+                        };
+
+                        var image = new System.Windows.Controls.Image
+                        {
+                            Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(imagePath)),
+                            Stretch = Stretch.UniformToFill
+                        };
+
+                        border.Child = image;
+                        border.MouseLeftButtonDown += GalleryImage_Click;
+
+                        // Insert before the Add Image box
+                        var addBoxIndex = GalleryPanel.Children.IndexOf(AddImageBox);
+                        GalleryPanel.Children.Insert(addBoxIndex, border);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Skip images that can't be loaded
+                        System.Diagnostics.Debug.WriteLine($"Failed to load image {imagePath}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        private void GalleryImage_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string imagePath)
+            {
+                try
+                {
+                    // Open the image in the default image viewer
+                    var psi = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = imagePath,
+                        UseShellExecute = true
+                    };
+                    System.Diagnostics.Process.Start(psi);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error opening image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void AddImageBox_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0 && IsImageFile(files[0]))
+                {
+                    e.Effects = DragDropEffects.Copy;
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            e.Effects = DragDropEffects.None;
+        }
+
+        private void AddImageBox_Drop(object sender, DragEventArgs e)
+        {
+            if (_currentEntry == null)
+                return;
+
+            try
+            {
+                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                    if (files != null && files.Length > 0 && IsImageFile(files[0]))
+                    {
+                        var sourceFile = files[0];
+                        var extension = System.IO.Path.GetExtension(sourceFile);
+
+                        // Create a unique filename using the lora path and timestamp
+                        var safePath = _currentEntry.Path.Replace("/", "_").Replace("\\", "_");
+                        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                        var fileName = $"{safePath}_{timestamp}{extension}";
+                        var destPath = System.IO.Path.Combine(_galleryBasePath, fileName);
+
+                        // Copy the file
+                        System.IO.File.Copy(sourceFile, destPath, overwrite: false);
+
+                        // Add to gallery list
+                        if (_currentEntry.Gallery == null)
+                        {
+                            _currentEntry.Gallery = new List<string>();
+                        }
+
+                        _currentEntry.Gallery.Add(fileName);
+
+                        // If this is a new entry, add it to the database
+                        if (_isNewEntry && _currentEntry.FileExists)
+                        {
+                            _database.AddEntry(_currentEntry.Path, _currentEntry);
+                            _isNewEntry = false;
+                        }
+
+                        // Mark as changed
+                        _hasUnsavedChanges = true;
+                        SaveButton.IsEnabled = true;
+
+                        // Reload gallery
+                        LoadGallery();
+
+                        StatusText.Text = $"Added image to gallery for {_currentEntry.Path}. Don't forget to save!";
+                    }
+                }
+
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error adding image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private bool IsImageFile(string filePath)
+        {
+            var extension = System.IO.Path.GetExtension(filePath)?.ToLowerInvariant();
+            return extension == ".jpg" || extension == ".jpeg" || extension == ".png" ||
+                   extension == ".bmp" || extension == ".gif" || extension == ".webp";
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

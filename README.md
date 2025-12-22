@@ -60,8 +60,17 @@ Once a file is selected, the right panel shows editable fields:
 - **Source URL** - Optional URL where the LoRA was downloaded from (supports drag and drop from browser)
 - **Suggested Strength** - Optional recommended strength value
 - **Notes** - Optional notes about the LoRA (editable, supports multiline)
+- **Gallery** - Image gallery showing example outputs (drag and drop images to add, click to view full size)
 
 All editable fields automatically save changes when you click "Save Database".
+
+### Managing Gallery Images
+
+The Gallery section displays 256x256 thumbnails of example images:
+- **View Images**: Click any thumbnail to open it in your default image viewer
+- **Add Images**: Drag and drop image files onto the "Add Image" box
+- **Supported Formats**: JPG, PNG, BMP, GIF, WEBP
+- **Storage**: Images are stored in `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers-pictures\`
 
 ### File ID Validation
 
@@ -115,12 +124,17 @@ The database uses JSON with newlines encoded as `\n`:
     "file_id": "abc123...",
     "source_url": "https://civitai.com/models/12345",
     "suggested_strength": "0.8-1.2",
-    "notes": "Works well with landscapes\nBest at 1024x1024"
+    "notes": "Works well with landscapes\nBest at 1024x1024",
+    "gallery": [
+      "path_to_lora_20231201120000.png",
+      "path_to_lora_20231201120030.jpg"
+    ]
   }
 }
 ```
 
 **Notes:**
 - The path keys do NOT include the `.safetensors` extension
-- `source_url`, `suggested_strength`, and `notes` are optional fields
+- `source_url`, `suggested_strength`, `notes`, and `gallery` are optional fields
 - Newlines in `active_triggers`, `all_triggers`, and `notes` are encoded as `\n`
+- Gallery contains filenames (not full paths) of images stored in the pictures folder
