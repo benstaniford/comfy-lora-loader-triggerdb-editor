@@ -198,36 +198,15 @@ namespace LoraDbEditor
 
                 if (!kvp.Value.IsFile && kvp.Value.Children != null)
                 {
+                    // Build dictionary from existing children
                     var childDict = new Dictionary<string, TreeViewNode>();
                     foreach (var child in kvp.Value.Children)
                     {
                         childDict[child.Name] = child;
                     }
 
-                    // Recursively build children
-                    var childPaths = _allFilePaths.Where(p => p.StartsWith(kvp.Value.FullPath + "/")).ToList();
-                    var nextLevelDict = new Dictionary<string, TreeViewNode>();
-
-                    foreach (var childPath in childPaths)
-                    {
-                        var remainingPath = childPath.Substring(kvp.Value.FullPath.Length + 1);
-                        var firstPart = remainingPath.Split('/')[0];
-
-                        if (!nextLevelDict.ContainsKey(firstPart))
-                        {
-                            var fullChildPath = kvp.Value.FullPath + "/" + firstPart;
-                            bool isFile = !childPath.Contains('/') || childPath == fullChildPath;
-
-                            nextLevelDict[firstPart] = new TreeViewNode
-                            {
-                                Name = firstPart,
-                                FullPath = fullChildPath,
-                                IsFile = isFile
-                            };
-                        }
-                    }
-
-                    BuildTreeRecursive(nextLevelDict, kvp.Value.Children);
+                    // Recursively build children - use the existing structure
+                    BuildTreeRecursive(childDict, kvp.Value.Children);
                 }
             }
         }
