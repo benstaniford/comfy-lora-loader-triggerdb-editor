@@ -1,0 +1,42 @@
+<Window x:Class="LoraDbEditor.DownloadProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Downloading LoRA" Height="200" Width="500"
+        Background="{StaticResource BackgroundBrush}"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="ToolWindow">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" x:Name="StatusText"
+                  Text="Preparing download..."
+                  FontSize="14" FontWeight="Bold"
+                  Margin="0,0,0,15"
+                  Foreground="{StaticResource TextBrush}"/>
+
+        <ProgressBar Grid.Row="1" x:Name="ProgressBar"
+                    Height="30" Margin="0,0,0,10"
+                    Minimum="0" Maximum="100" Value="0"/>
+
+        <TextBlock Grid.Row="2" x:Name="ProgressText"
+                  Text="0%"
+                  FontSize="12"
+                  Margin="0,0,0,5"
+                  HorizontalAlignment="Center"
+                  Foreground="{StaticResource TextBrush}"/>
+
+        <TextBlock Grid.Row="3" x:Name="SizeText"
+                  Text=""
+                  FontSize="11"
+                  Margin="0,0,0,0"
+                  HorizontalAlignment="Center"
+                  Foreground="{StaticResource TextBrush}"
+                  Opacity="0.7"/>
+    </Grid>
+</Window>

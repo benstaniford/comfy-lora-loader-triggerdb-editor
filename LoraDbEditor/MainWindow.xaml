@@ -21,14 +21,38 @@
         </Style>
     </Window.Resources>
 
-    <Grid Margin="10">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300"/>
-            <ColumnDefinition Width="5"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="150"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-        <!-- Left Panel: Tree View -->
+        <!-- Drag and Drop Zone for Adding LoRA -->
+        <Border Grid.Row="0" Margin="10,10,10,5"
+                Background="#3F3F46"
+                BorderThickness="2"
+                BorderBrush="{StaticResource BorderBrush}"
+                AllowDrop="True"
+                PreviewDragOver="AddLoraZone_PreviewDragOver"
+                Drop="AddLoraZone_Drop">
+            <TextBlock Text="Add Lora (Drag and Drop)"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      FontSize="24"
+                      FontWeight="Bold"
+                      Foreground="{StaticResource TextBrush}"
+                      Opacity="0.7"/>
+        </Border>
+
+        <!-- Main Content Grid -->
+        <Grid Grid.Row="1" Margin="10,5,10,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel: Tree View -->
         <Border Grid.Column="0" BorderThickness="1" Background="{StaticResource SurfaceBrush}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -272,6 +296,7 @@
                            Width="120" Click="SaveButton_Click" IsEnabled="False"/>
                 </Grid>
             </Border>
+        </Grid>
         </Grid>
     </Grid>
 </Window>

@@ -820,5 +820,198 @@ namespace LoraDbEditor
 
             base.OnClosing(e);
         }
+
+        private void AddLoraZone_PreviewDragOver(object sender, DragEventArgs e)
+        {
+            // Accept text or HTML data (URLs from browsers)
+            if (e.Data.GetDataPresent(DataFormats.Text) ||
+                e.Data.GetDataPresent(DataFormats.UnicodeText) ||
+                e.Data.GetDataPresent(DataFormats.Html))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+        }
+
+        private async void AddLoraZone_Drop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                string? url = null;
+
+                // Try to get URL from various data formats
+                if (e.Data.GetDataPresent(DataFormats.Text))
+                {
+                    url = e.Data.GetData(DataFormats.Text) as string;
+                }
+                else if (e.Data.GetDataPresent(DataFormats.UnicodeText))
+                {
+                    url = e.Data.GetData(DataFormats.UnicodeText) as string;
+                }
+                else if (e.Data.GetDataPresent(DataFormats.Html))
+                {
+                    // Extract URL from HTML content
+                    var html = e.Data.GetData(DataFormats.Html) as string;
+                    if (!string.IsNullOrEmpty(html))
+                    {
+                        // Simple extraction - look for href attribute
+                        var match = System.Text.RegularExpressions.Regex.Match(html, @"href=""([^""]+)""");
+                        if (match.Success)
+                        {
+                            url = match.Groups[1].Value;
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    MessageBox.Show("No valid URL found in dropped data.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                url = url.Trim();
+
+                // Validate URL
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                {
+                    MessageBox.Show("Invalid URL format.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Ask user where to save the file
+                var folderDialog = new FolderSelectionDialog(_allFilePaths);
+                if (folderDialog.ShowDialog() != true)
+                {
+                    return; // User cancelled
+                }
+
+                string targetPath = folderDialog.SelectedPath;
+
+                // Show progress window and download
+                await DownloadAndAddLoraAsync(url, targetPath);
+
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error processing dropped URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task DownloadAndAddLoraAsync(string url, string relativePath)
+        {
+            var progressWindow = new DownloadProgressWindow();
+            progressWindow.Owner = this;
+
+            try
+            {
+                // Build the full file path
+                string fullPath = System.IO.Path.Combine(_database.LorasBasePath, relativePath + ".safetensors");
+
+                // Ensure directory exists
+                var directory = System.IO.Path.GetDirectoryName(fullPath);
+                if (directory != null && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // Check if file already exists
+                if (System.IO.File.Exists(fullPath))
+                {
+                    var result = MessageBox.Show($"File already exists at {relativePath}.safetensors. Overwrite?",
+                        "File Exists", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (result != MessageBoxResult.Yes)
+                    {
+                        return;
+                    }
+                }
+
+                // Show progress window
+                progressWindow.Show();
+                progressWindow.UpdateStatus("Downloading...");
+
+                // Download the file
+                using (var httpClient = new HttpClient())
+                {
+                    httpClient.Timeout = TimeSpan.FromMinutes(30); // Long timeout for large files
+
+                    using (var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+                    {
+                        response.EnsureSuccessStatusCode();
+
+                        var totalBytes = response.Content.Headers.ContentLength ?? 0;
+
+                        using (var contentStream = await response.Content.ReadAsStreamAsync())
+                        using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                        {
+                            var buffer = new byte[8192];
+                            long totalBytesRead = 0;
+                            int bytesRead;
+
+                            while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                            {
+                                await fileStream.WriteAsync(buffer, 0, bytesRead);
+                                totalBytesRead += bytesRead;
+
+                                if (totalBytes > 0)
+                                {
+                                    var progress = (int)((totalBytesRead * 100) / totalBytes);
+                                    progressWindow.UpdateProgress(progress, totalBytesRead, totalBytes);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                progressWindow.UpdateStatus("Calculating file ID...");
+
+                // Calculate file ID
+                string fileId = FileIdCalculator.CalculateFileId(fullPath);
+
+                // Create new entry
+                var newEntry = new LoraEntry
+                {
+                    Path = relativePath,
+                    FullPath = fullPath,
+                    FileId = fileId,
+                    FileExists = true,
+                    CalculatedFileId = fileId,
+                    FileIdValid = true,
+                    SourceUrl = url,
+                    ActiveTriggers = "",
+                    AllTriggers = ""
+                };
+
+                // Add to database
+                _database.AddEntry(relativePath, newEntry);
+                _hasUnsavedChanges = true;
+                SaveButton.IsEnabled = true;
+
+                progressWindow.UpdateStatus("Updating file list...");
+
+                // Refresh file list and tree view
+                _allFilePaths = _scanner.ScanForLoraFiles();
+                BuildTreeView();
+                SearchComboBox.ItemsSource = _allFilePaths;
+
+                // Load the new entry in the details panel
+                LoadLoraEntry(relativePath);
+
+                progressWindow.Close();
+
+                StatusText.Text = $"Successfully added {relativePath}. Don't forget to save!";
+                MessageBox.Show($"LoRA file downloaded successfully!\n\nPath: {relativePath}\nFile ID: {fileId}",
+                    "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                progressWindow.Close();
+                MessageBox.Show($"Error downloading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }
