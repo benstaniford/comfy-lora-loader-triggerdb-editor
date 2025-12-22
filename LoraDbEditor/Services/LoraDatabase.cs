@@ -123,5 +123,10 @@ namespace LoraDbEditor.Services
             entry.FullPath = Path.Combine(_lorasBasePath, path + ".safetensors");
             _entries[path] = entry;
         }
+
+        public void RemoveEntry(string path)
+        {
+            _entries.Remove(path);
+        }
     }
 }

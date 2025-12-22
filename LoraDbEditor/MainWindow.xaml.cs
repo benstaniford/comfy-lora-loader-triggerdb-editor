@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -202,6 +203,269 @@ namespace LoraDbEditor
             {
                 LoadLoraEntry(node.FullPath);
             }
+        }
+
+        private void FileTreeView_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.F2)
+            {
+                RenameSelectedLora();
+                e.Handled = true;
+            }
+        }
+
+        private void RenameMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            RenameSelectedLora();
+        }
+
+        private void RenameSelectedLora()
+        {
+            if (FileTreeView.SelectedItem is not TreeViewNode node || !node.IsFile)
+            {
+                MessageBox.Show("Please select a LoRA file to rename.", "No File Selected", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var oldPath = node.FullPath;
+            var oldFullPath = Path.Combine(_database.LorasBasePath, oldPath + ".safetensors");
+
+            // Check if file exists
+            if (!File.Exists(oldFullPath))
+            {
+                MessageBox.Show("The selected file does not exist on disk.", "File Not Found", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // Get current name (without extension)
+            var currentName = Path.GetFileName(oldPath);
+            var directory = Path.GetDirectoryName(oldPath)?.Replace("\\", "/") ?? "";
+
+            // Show rename dialog
+            var dialog = new Window
+            {
+                Title = "Rename LoRA",
+                Width = 450,
+                Height = 180,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = (SolidColorBrush)FindResource("BackgroundBrush"),
+                ResizeMode = ResizeMode.NoResize
+            };
+
+            var grid = new Grid { Margin = new Thickness(15) };
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var label = new TextBlock
+            {
+                Text = "New name (without .safetensors extension):",
+                Foreground = (SolidColorBrush)FindResource("TextBrush"),
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            Grid.SetRow(label, 0);
+            grid.Children.Add(label);
+
+            var textBox = new TextBox
+            {
+                Text = currentName,
+                Foreground = (SolidColorBrush)FindResource("TextBrush"),
+                Background = (SolidColorBrush)FindResource("SurfaceBrush"),
+                BorderBrush = (SolidColorBrush)FindResource("BorderBrush"),
+                Padding = new Thickness(5),
+                FontSize = 13
+            };
+            Grid.SetRow(textBox, 1);
+            grid.Children.Add(textBox);
+
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 15, 0, 0)
+            };
+            Grid.SetRow(buttonPanel, 3);
+
+            var okButton = new Button
+            {
+                Content = "OK",
+                Width = 80,
+                Height = 30,
+                Margin = new Thickness(0, 0, 10, 0),
+                IsDefault = true
+            };
+
+            var cancelButton = new Button
+            {
+                Content = "Cancel",
+                Width = 80,
+                Height = 30,
+                IsCancel = true
+            };
+
+            bool dialogResult = false;
+            okButton.Click += (s, e) =>
+            {
+                dialogResult = true;
+                dialog.Close();
+            };
+
+            cancelButton.Click += (s, e) =>
+            {
+                dialog.Close();
+            };
+
+            buttonPanel.Children.Add(okButton);
+            buttonPanel.Children.Add(cancelButton);
+            grid.Children.Add(buttonPanel);
+
+            dialog.Content = grid;
+            textBox.SelectAll();
+            textBox.Focus();
+
+            dialog.ShowDialog();
+
+            if (!dialogResult)
+                return;
+
+            var newName = textBox.Text.Trim();
+
+            // Validate new name
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                MessageBox.Show("Name cannot be empty.", "Invalid Name", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (newName == currentName)
+            {
+                return; // No change
+            }
+
+            // Check for invalid characters
+            var invalidChars = Path.GetInvalidFileNameChars();
+            if (newName.IndexOfAny(invalidChars) >= 0)
+            {
+                MessageBox.Show("Name contains invalid characters.", "Invalid Name", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Build new path
+            var newPath = string.IsNullOrEmpty(directory) ? newName : directory + "/" + newName;
+            var newFullPath = Path.Combine(_database.LorasBasePath, newPath + ".safetensors");
+
+            // Check if target already exists
+            if (File.Exists(newFullPath))
+            {
+                MessageBox.Show($"A file already exists at: {newPath}", "File Exists", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                // Rename the file on disk
+                File.Move(oldFullPath, newFullPath);
+
+                // Update the database
+                var entry = _database.GetEntry(oldPath);
+                if (entry != null)
+                {
+                    // Remove old entry
+                    _database.RemoveEntry(oldPath);
+
+                    // Update entry paths
+                    entry.Path = newPath;
+                    entry.FullPath = newFullPath;
+
+                    // Add with new path
+                    _database.AddEntry(newPath, entry);
+
+                    // Update gallery image filenames if they exist
+                    if (entry.Gallery != null && entry.Gallery.Count > 0)
+                    {
+                        UpdateGalleryFilenames(oldPath, newPath, entry);
+                    }
+                }
+
+                // Mark as changed
+                _hasUnsavedChanges = true;
+                SaveButton.IsEnabled = true;
+
+                // Refresh file list and tree view
+                _allFilePaths = _scanner.ScanForLoraFiles();
+                BuildTreeView();
+                SearchComboBox.ItemsSource = _allFilePaths;
+
+                // Load the renamed entry
+                LoadLoraEntry(newPath);
+
+                StatusText.Text = $"Renamed {oldPath} to {newPath}. Don't forget to save!";
+                MessageBox.Show($"Successfully renamed:\n\nFrom: {oldPath}\nTo: {newPath}", 
+                    "Rename Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error renaming file: {ex.Message}", "Rename Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void UpdateGalleryFilenames(string oldPath, string newPath, LoraEntry entry)
+        {
+            if (entry.Gallery == null)
+                return;
+
+            var oldSafePath = oldPath.Replace("/", "_").Replace("\\", "_");
+            var newSafePath = newPath.Replace("/", "_").Replace("\\", "_");
+
+            var updatedGallery = new List<string>();
+
+            foreach (var oldFileName in entry.Gallery)
+            {
+                // Check if the filename starts with the old safe path
+                if (oldFileName.StartsWith(oldSafePath + "_"))
+                {
+                    var oldFilePath = Path.Combine(_galleryBasePath, oldFileName);
+                    if (File.Exists(oldFilePath))
+                    {
+                        // Create new filename by replacing the prefix
+                        var newFileName = newSafePath + oldFileName.Substring(oldSafePath.Length);
+                        var newFilePath = Path.Combine(_galleryBasePath, newFileName);
+
+                        try
+                        {
+                            // Rename the gallery image file
+                            File.Move(oldFilePath, newFilePath);
+                            updatedGallery.Add(newFileName);
+                        }
+                        catch
+                        {
+                            // If rename fails, keep old filename
+                            updatedGallery.Add(oldFileName);
+                        }
+                    }
+                    else
+                    {
+                        // File doesn't exist, update the name anyway
+                        var newFileName = newSafePath + oldFileName.Substring(oldSafePath.Length);
+                        updatedGallery.Add(newFileName);
+                    }
+                }
+                else
+                {
+                    // Filename doesn't match pattern, keep as is
+                    updatedGallery.Add(oldFileName);
+                }
+            }
+
+            entry.Gallery = updatedGallery;
         }
 
         private void LoadLoraEntry(string path)
