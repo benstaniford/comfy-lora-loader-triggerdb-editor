@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Windows;
@@ -21,6 +22,8 @@ namespace LoraDbEditor
         private bool _isNewEntry = false;
         private bool _isLoadingEntry = false;
         private bool _hasUnsavedChanges = false;
+        private bool _isGitAvailable = false;
+        private bool _isGitRepo = false;
 
         public MainWindow()
         {
@@ -64,6 +67,9 @@ namespace LoraDbEditor
                 {
                     textBox.TextChanged += SearchTextBox_TextChanged;
                 }
+
+                // Check for git availability
+                await CheckGitAvailabilityAsync();
 
                 StatusText.Text = $"Ready. Found {_allFilePaths.Count} LoRA files, {_database.GetAllEntries().Count()} database entries.";
             }
@@ -428,6 +434,12 @@ namespace LoraDbEditor
 
                 _hasUnsavedChanges = false;
                 StatusText.Text = "Database saved successfully.";
+
+                // Check if there are git changes after saving
+                if (_isGitAvailable && _isGitRepo)
+                {
+                    await UpdateCommitButtonStateAsync();
+                }
             }
             catch (Exception ex)
             {
@@ -784,6 +796,12 @@ namespace LoraDbEditor
                         LoadGallery();
 
                         StatusText.Text = $"Added image to gallery for {_currentEntry.Path}. Don't forget to save!";
+
+                        // Update git commit button state since we added a new file
+                        if (_isGitAvailable && _isGitRepo)
+                        {
+                            await UpdateCommitButtonStateAsync();
+                        }
                     }
                 }
 
@@ -1023,11 +1041,134 @@ namespace LoraDbEditor
                 StatusText.Text = $"Successfully added {relativePath}. Don't forget to save!";
                 MessageBox.Show($"LoRA file downloaded successfully!\n\nPath: {relativePath}\nFile ID: {fileId}",
                     "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Note: We don't update git button state here because the file hasn't been saved to the database yet
+                // The git button will be updated after the user clicks Save Database
             }
             catch (Exception ex)
             {
                 progressWindow.Close();
                 MessageBox.Show($"Error downloading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task CheckGitAvailabilityAsync()
+        {
+            try
+            {
+                // Check if git is installed
+                var gitVersion = await RunGitCommandAsync("--version", Path.GetDirectoryName(_database.DatabasePath)!);
+                _isGitAvailable = !string.IsNullOrEmpty(gitVersion);
+
+                if (_isGitAvailable)
+                {
+                    // Check if the database file is in a git repository
+                    var gitStatus = await RunGitCommandAsync("status --porcelain", Path.GetDirectoryName(_database.DatabasePath)!);
+                    _isGitRepo = gitStatus != null; // If git status works, we're in a repo
+
+                    if (_isGitRepo)
+                    {
+                        // Show the commit button
+                        CommitButton.Visibility = Visibility.Visible;
+                        await UpdateCommitButtonStateAsync();
+                    }
+                }
+            }
+            catch
+            {
+                _isGitAvailable = false;
+                _isGitRepo = false;
+            }
+        }
+
+        private async Task UpdateCommitButtonStateAsync()
+        {
+            try
+            {
+                // Check if there are uncommitted changes to the database file or gallery
+                var dbFileName = Path.GetFileName(_database.DatabasePath);
+                var dbDirectory = Path.GetDirectoryName(_database.DatabasePath)!;
+                var galleryFolderName = Path.GetFileName(_galleryBasePath);
+
+                var status = await RunGitCommandAsync($"status --porcelain \"{dbFileName}\" \"{galleryFolderName}\"", dbDirectory);
+
+                // Enable button if there are changes
+                CommitButton.IsEnabled = !string.IsNullOrWhiteSpace(status);
+            }
+            catch
+            {
+                CommitButton.IsEnabled = false;
+            }
+        }
+
+        private async void CommitButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                StatusText.Text = "Committing to git...";
+                CommitButton.IsEnabled = false;
+
+                var dbDirectory = Path.GetDirectoryName(_database.DatabasePath)!;
+                var dbFileName = Path.GetFileName(_database.DatabasePath);
+                var galleryFolderName = Path.GetFileName(_galleryBasePath);
+
+                // Add the database file
+                await RunGitCommandAsync($"add \"{dbFileName}\"", dbDirectory);
+
+                // Add all files in the gallery folder
+                await RunGitCommandAsync($"add \"{galleryFolderName}\"", dbDirectory);
+
+                // Commit with the specified message
+                await RunGitCommandAsync("commit -m \"Updated by Lora Db Editor\"", dbDirectory);
+
+                StatusText.Text = "Successfully committed to git.";
+                MessageBox.Show("Database and gallery images committed to git successfully!",
+                    "Git Commit", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Update button state (should be disabled now since there are no changes)
+                await UpdateCommitButtonStateAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error committing to git: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText.Text = "Error committing to git.";
+                await UpdateCommitButtonStateAsync();
+            }
+        }
+
+        private async Task<string?> RunGitCommandAsync(string arguments, string workingDirectory)
+        {
+            try
+            {
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = "git",
+                    Arguments = arguments,
+                    WorkingDirectory = workingDirectory,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = new Process { StartInfo = processInfo };
+                process.Start();
+
+                var output = await process.StandardOutput.ReadToEndAsync();
+                var error = await process.StandardError.ReadToEndAsync();
+
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode != 0 && !string.IsNullOrEmpty(error))
+                {
+                    throw new Exception(error);
+                }
+
+                return output;
+            }
+            catch
+            {
+                return null;
             }
         }
     }

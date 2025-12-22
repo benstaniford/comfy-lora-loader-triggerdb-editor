@@ -289,10 +289,14 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <TextBlock x:Name="StatusText" Grid.Column="0" Foreground="{StaticResource TextBrush}"/>
-                    <Button x:Name="SaveButton" Grid.Column="1" Content="Save Database"
+                    <Button x:Name="CommitButton" Grid.Column="1" Content="Commit Database"
+                           Width="130" Margin="0,0,10,0" Click="CommitButton_Click"
+                           IsEnabled="False" Visibility="Collapsed"/>
+                    <Button x:Name="SaveButton" Grid.Column="2" Content="Save Database"
                            Width="120" Click="SaveButton_Click" IsEnabled="False"/>
                 </Grid>
             </Border>
