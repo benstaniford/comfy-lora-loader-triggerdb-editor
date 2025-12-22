@@ -14,6 +14,7 @@ namespace LoraDbEditor
         private List<string> _allFilePaths = new();
         private ObservableCollection<TreeViewNode> _treeNodes = new();
         private LoraEntry? _currentEntry;
+        private bool _isNewEntry = false;
         private bool _hasUnsavedChanges = false;
 
         public MainWindow()
@@ -188,6 +189,7 @@ namespace LoraDbEditor
             {
                 // Get or create entry
                 var entry = _database.GetEntry(path);
+                _isNewEntry = (entry == null);
 
                 if (entry == null)
                 {
@@ -225,7 +227,20 @@ namespace LoraDbEditor
                 bool showWarning = false;
                 UpdateFileIdButton.Visibility = Visibility.Collapsed;
 
-                if (!entry.FileExists)
+                if (_isNewEntry && entry.FileExists)
+                {
+                    // New entry - file exists but not in database
+                    FileIdWarningBorder.Visibility = Visibility.Visible;
+                    FileIdWarningBorder.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFA500")!);
+                    FileIdWarningText.Text = "WARNING: File exists but no database entry found!";
+                    FileIdWarningText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFA500")!);
+                    CurrentFileIdText.Text = "(no entry)";
+                    ExpectedFileIdText.Text = entry.CalculatedFileId ?? "(calculating...)";
+                    UpdateFileIdButton.Visibility = Visibility.Visible;
+                    UpdateFileIdButton.Content = "Create new record";
+                    showWarning = true;
+                }
+                else if (!entry.FileExists)
                 {
                     FileIdWarningBorder.Visibility = Visibility.Visible;
                     FileIdWarningBorder.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F44747")!);
@@ -244,6 +259,7 @@ namespace LoraDbEditor
                     CurrentFileIdText.Text = entry.FileId ?? "(none)";
                     ExpectedFileIdText.Text = entry.CalculatedFileId ?? "(calculating...)";
                     UpdateFileIdButton.Visibility = Visibility.Visible;
+                    UpdateFileIdButton.Content = "Update File ID";
                     showWarning = true;
                 }
                 else if (!entry.FileIdValid)
@@ -255,6 +271,7 @@ namespace LoraDbEditor
                     CurrentFileIdText.Text = entry.FileId;
                     ExpectedFileIdText.Text = entry.CalculatedFileId ?? "(error calculating)";
                     UpdateFileIdButton.Visibility = Visibility.Visible;
+                    UpdateFileIdButton.Content = "Update File ID";
                     showWarning = true;
                 }
                 else
@@ -293,14 +310,30 @@ namespace LoraDbEditor
 
             try
             {
-                _database.UpdateFileId(_currentEntry.Path, _currentEntry.CalculatedFileId);
+                if (_isNewEntry)
+                {
+                    // Create new database entry
+                    var newEntry = new LoraEntry
+                    {
+                        ActiveTriggers = "",
+                        AllTriggers = "",
+                        FileId = _currentEntry.CalculatedFileId
+                    };
+                    _database.AddEntry(_currentEntry.Path, newEntry);
+                    StatusText.Text = $"Created new record for {_currentEntry.Path}. Don't forget to save!";
+                }
+                else
+                {
+                    // Update existing entry
+                    _database.UpdateFileId(_currentEntry.Path, _currentEntry.CalculatedFileId);
+                    StatusText.Text = $"Updated file ID for {_currentEntry.Path}. Don't forget to save!";
+                }
+
                 _hasUnsavedChanges = true;
                 SaveButton.IsEnabled = true;
 
                 // Reload the entry to refresh UI
                 LoadLoraEntry(_currentEntry.Path);
-
-                StatusText.Text = $"Updated file ID for {_currentEntry.Path}. Don't forget to save!";
             }
             catch (Exception ex)
             {
