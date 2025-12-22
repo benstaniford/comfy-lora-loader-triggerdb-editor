@@ -86,63 +86,74 @@ namespace LoraDbEditor
         private void BuildTreeView()
         {
             _treeNodes.Clear();
-            var root = new Dictionary<string, TreeViewNode>();
+
+            // Build a flat dictionary first with full paths as keys
+            var allNodes = new Dictionary<string, TreeViewNode>();
 
             // First, add all directories from the filesystem
             if (Directory.Exists(_database.LorasBasePath))
             {
-                AddDirectoriesToTree(root, _database.LorasBasePath, "");
+                AddAllDirectories(_database.LorasBasePath, "", allNodes);
             }
 
             // Then, add all files from the scanned paths
             foreach (var path in _allFilePaths)
             {
-                AddPathToTree(root, path, isFile: true);
+                AddFileNode(path, allNodes);
             }
 
-            // Convert dictionary to observable collection
+            // Now build the hierarchy by linking parent-child relationships
             var rootCollection = new ObservableCollection<TreeViewNode>();
-            BuildTreeRecursive(root, rootCollection);
+            
+            foreach (var kvp in allNodes.OrderBy(x => x.Key))
+            {
+                var node = kvp.Value;
+                var path = kvp.Key;
+                
+                // Check if this is a root-level node (no slash in path)
+                if (!path.Contains('/'))
+                {
+                    rootCollection.Add(node);
+                }
+                else
+                {
+                    // Find parent and add to parent's children
+                    var lastSlash = path.LastIndexOf('/');
+                    var parentPath = path.Substring(0, lastSlash);
+                    
+                    if (allNodes.ContainsKey(parentPath))
+                    {
+                        var parent = allNodes[parentPath];
+                        if (!parent.Children.Contains(node))
+                        {
+                            parent.Children.Add(node);
+                        }
+                    }
+                }
+            }
+
+            // Sort children in each node
+            SortTreeNodes(rootCollection);
+
             FileTreeView.ItemsSource = rootCollection;
         }
 
-        private void AddPathToTree(Dictionary<string, TreeViewNode> root, string path, bool isFile)
+        private void SortTreeNodes(ObservableCollection<TreeViewNode> nodes)
         {
-            var parts = path.Split('/');
-            var currentLevel = root;
-            string currentPath = "";
-
-            for (int i = 0; i < parts.Length; i++)
+            // Sort current level: folders first, then by name
+            var sorted = nodes.OrderBy(x => x.IsFile).ThenBy(x => x.Name).ToList();
+            nodes.Clear();
+            foreach (var node in sorted)
             {
-                var part = parts[i];
-                currentPath = string.IsNullOrEmpty(currentPath) ? part : currentPath + "/" + part;
-                bool isFileNode = isFile && (i == parts.Length - 1);
-
-                if (!currentLevel.ContainsKey(part))
+                nodes.Add(node);
+                if (!node.IsFile && node.Children.Count > 0)
                 {
-                    var node = new TreeViewNode
-                    {
-                        Name = part,
-                        FullPath = currentPath,
-                        IsFile = isFileNode
-                    };
-                    currentLevel[part] = node;
-                }
-
-                if (!isFileNode)
-                {
-                    // Move to the next level - use the node's children
-                    var nextLevel = new Dictionary<string, TreeViewNode>();
-                    foreach (var child in currentLevel[part].Children)
-                    {
-                        nextLevel[child.Name] = child;
-                    }
-                    currentLevel = nextLevel;
+                    SortTreeNodes(node.Children);
                 }
             }
         }
 
-        private void AddDirectoriesToTree(Dictionary<string, TreeViewNode> root, string basePath, string relativePath)
+        private void AddAllDirectories(string basePath, string relativePath, Dictionary<string, TreeViewNode> allNodes)
         {
             string currentDirPath = string.IsNullOrEmpty(relativePath) 
                 ? basePath 
@@ -160,34 +171,42 @@ namespace LoraDbEditor
                     ? dirName 
                     : relativePath + "/" + dirName;
 
-                // Add this directory path to the tree
-                AddPathToTree(root, dirRelativePath, isFile: false);
+                // Add this directory node if it doesn't exist
+                if (!allNodes.ContainsKey(dirRelativePath))
+                {
+                    allNodes[dirRelativePath] = new TreeViewNode
+                    {
+                        Name = dirName,
+                        FullPath = dirRelativePath,
+                        IsFile = false
+                    };
+                }
 
                 // Recursively add subdirectories
-                AddDirectoriesToTree(root, basePath, dirRelativePath);
+                AddAllDirectories(basePath, dirRelativePath, allNodes);
             }
         }
 
-        private void BuildTreeRecursive(Dictionary<string, TreeViewNode> dict, ObservableCollection<TreeViewNode> collection)
+        private void AddFileNode(string path, Dictionary<string, TreeViewNode> allNodes)
         {
-            foreach (var kvp in dict.OrderBy(x => x.Value.IsFile).ThenBy(x => x.Key))
+            var parts = path.Split('/');
+            string currentPath = "";
+
+            for (int i = 0; i < parts.Length; i++)
             {
-                collection.Add(kvp.Value);
+                var part = parts[i];
+                var previousPath = currentPath;
+                currentPath = string.IsNullOrEmpty(currentPath) ? part : currentPath + "/" + part;
+                bool isFileNode = (i == parts.Length - 1);
 
-                if (!kvp.Value.IsFile)
+                if (!allNodes.ContainsKey(currentPath))
                 {
-                    // Build dictionary from existing children for recursion
-                    var childDict = new Dictionary<string, TreeViewNode>();
-                    foreach (var child in kvp.Value.Children)
+                    allNodes[currentPath] = new TreeViewNode
                     {
-                        childDict[child.Name] = child;
-                    }
-
-                    // Recursively build children
-                    if (childDict.Count > 0)
-                    {
-                        BuildTreeRecursive(childDict, kvp.Value.Children);
-                    }
+                        Name = part,
+                        FullPath = currentPath,
+                        IsFile = isFileNode
+                    };
                 }
             }
         }
