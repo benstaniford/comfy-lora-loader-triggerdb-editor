@@ -308,7 +308,15 @@ namespace LoraDbEditor
                 _isLoadingEntry = true;
                 try
                 {
-                    ActiveTriggersText.Text = entry.ActiveTriggers ?? "";
+                    // Convert \n to actual newlines for display
+                    if (!string.IsNullOrEmpty(entry.ActiveTriggers))
+                    {
+                        ActiveTriggersText.Text = entry.ActiveTriggers.Replace("\\n", Environment.NewLine);
+                    }
+                    else
+                    {
+                        ActiveTriggersText.Text = "";
+                    }
 
                     // Convert \n to actual newlines for display
                     if (!string.IsNullOrEmpty(entry.AllTriggers))
@@ -419,8 +427,9 @@ namespace LoraDbEditor
             if (_isLoadingEntry || _currentEntry == null)
                 return;
 
-            // Update the entry
-            _currentEntry.ActiveTriggers = ActiveTriggersText.Text;
+            // Convert actual newlines to \n for storage
+            var textWithEncodedNewlines = ActiveTriggersText.Text.Replace(Environment.NewLine, "\\n");
+            _currentEntry.ActiveTriggers = textWithEncodedNewlines;
 
             // If this is a new entry, add it to the database
             if (_isNewEntry && _currentEntry.FileExists)

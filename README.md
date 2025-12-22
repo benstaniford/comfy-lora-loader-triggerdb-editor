@@ -55,7 +55,7 @@ Once a file is selected, the right panel shows editable fields:
 
 - **File Path** - The relative path used as the database key
 - **File ID** - SHA1 hash identifier for the file
-- **Active Triggers** - Currently active trigger words (editable)
+- **Active Triggers** - Currently active trigger words (editable, supports multiline)
 - **All Triggers** - Complete list of trigger words with descriptions (editable, supports multiline)
 - **Source URL** - Optional URL where the LoRA was downloaded from (supports drag and drop from browser)
 - **Suggested Strength** - Optional recommended strength value
@@ -110,7 +110,7 @@ The database uses JSON with newlines encoded as `\n`:
 ```json
 {
   "path/to/lora": {
-    "active_triggers": "trigger1, trigger2",
+    "active_triggers": "trigger1\ntrigger2",
     "all_triggers": "trigger1, trigger2\nRecommended Strength: 1.0",
     "file_id": "abc123...",
     "source_url": "https://civitai.com/models/12345",
@@ -123,4 +123,4 @@ The database uses JSON with newlines encoded as `\n`:
 **Notes:**
 - The path keys do NOT include the `.safetensors` extension
 - `source_url`, `suggested_strength`, and `notes` are optional fields
-- Newlines in `all_triggers` and `notes` are encoded as `\n`
+- Newlines in `active_triggers`, `all_triggers`, and `notes` are encoded as `\n`

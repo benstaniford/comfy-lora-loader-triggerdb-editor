@@ -42,7 +42,7 @@ The `lora-triggers.json` file uses a specific structure:
 ```json
 {
   "path/to/lora": {
-    "active_triggers": "trigger1, trigger2",
+    "active_triggers": "trigger1\ntrigger2",
     "all_triggers": "trigger1, trigger2\nRecommended Strength: 1.0",
     "file_id": "abc123...",
     "source_url": "https://civitai.com/models/12345",
@@ -100,7 +100,7 @@ This algorithm matches the Python implementation in `~/dot-files/scripts/get-fil
   - File path title
   - File ID section with validation warnings
   - Editable text fields:
-    - Active Triggers (single line)
+    - Active Triggers (multiline, converts `\n` to actual newlines for display)
     - All Triggers (multiline, converts `\n` to actual newlines for display)
     - Source URL (single line, supports drag and drop)
     - Suggested Strength (single line)
@@ -135,4 +135,4 @@ When adding new UI controls, use these resource keys to maintain visual consiste
 
 - **Optional Field Serialization**: Optional fields (`source_url`, `suggested_strength`, `notes`) are stored as `null` in JSON when empty or whitespace-only. This is handled by checking `string.IsNullOrWhiteSpace()` before assignment in TextChanged handlers.
 
-- **Newline Encoding**: Both `all_triggers` and `notes` fields support multiline text. Actual newlines (`Environment.NewLine`) are converted to `\n` for JSON storage and converted back for display. This ensures consistent serialization across different platforms.
+- **Newline Encoding**: The `active_triggers`, `all_triggers`, and `notes` fields support multiline text. Actual newlines (`Environment.NewLine`) are converted to `\n` for JSON storage and converted back for display. This ensures consistent serialization across different platforms.

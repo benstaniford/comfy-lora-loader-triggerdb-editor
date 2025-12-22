@@ -162,6 +162,7 @@
                         <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
                                Padding="10" Margin="0,0,0,15" Background="{StaticResource BackgroundBrush}">
                             <TextBox x:Name="ActiveTriggersText" TextWrapping="Wrap"
+                                    MinHeight="60" AcceptsReturn="True"
                                     BorderThickness="0" Background="Transparent"
                                     Foreground="{StaticResource TextBrush}"
                                     TextChanged="ActiveTriggersText_TextChanged"/>
