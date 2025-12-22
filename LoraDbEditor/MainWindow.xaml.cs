@@ -347,6 +347,9 @@ namespace LoraDbEditor
                     _isLoadingEntry = false;
                 }
 
+                // Update the source URL link visibility after loading is complete
+                UpdateSourceUrlLink();
+
                 StatusText.Text = $"Loaded: {path}";
             }
             catch (Exception ex)
@@ -474,6 +477,9 @@ namespace LoraDbEditor
             // Update the entry
             _currentEntry.SourceUrl = string.IsNullOrWhiteSpace(SourceUrlText.Text) ? null : SourceUrlText.Text;
 
+            // Update hyperlink visibility and URI
+            UpdateSourceUrlLink();
+
             // If this is a new entry, add it to the database
             if (_isNewEntry && _currentEntry.FileExists)
             {
@@ -485,6 +491,40 @@ namespace LoraDbEditor
             _hasUnsavedChanges = true;
             SaveButton.IsEnabled = true;
             StatusText.Text = $"Modified: {_currentEntry.Path}. Don't forget to save!";
+        }
+
+        private void UpdateSourceUrlLink()
+        {
+            var urlText = SourceUrlText.Text?.Trim();
+
+            if (!string.IsNullOrWhiteSpace(urlText) && Uri.TryCreate(urlText, UriKind.Absolute, out var uri))
+            {
+                SourceUrlHyperlink.NavigateUri = uri;
+                SourceUrlLink.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                SourceUrlLink.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void SourceUrlHyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        {
+            try
+            {
+                // Open the URL in the default browser
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = e.Uri.AbsoluteUri,
+                    UseShellExecute = true
+                };
+                System.Diagnostics.Process.Start(psi);
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void SourceUrlText_PreviewDragOver(object sender, DragEventArgs e)

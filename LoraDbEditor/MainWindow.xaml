@@ -181,8 +181,17 @@
                         </Border>
 
                         <!-- Source URL Section -->
-                        <TextBlock Text="Source URL" FontWeight="Bold" FontSize="13"
-                                  Margin="0,0,0,5" Foreground="{StaticResource TextBrush}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <TextBlock Text="Source URL" FontWeight="Bold" FontSize="13"
+                                      Foreground="{StaticResource TextBrush}"/>
+                            <TextBlock x:Name="SourceUrlLink" Margin="10,0,0,0" Visibility="Collapsed">
+                                <Hyperlink x:Name="SourceUrlHyperlink"
+                                          RequestNavigate="SourceUrlHyperlink_RequestNavigate"
+                                          Foreground="{StaticResource AccentBrush}">
+                                    <Run Text="Open"/>
+                                </Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
                         <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
                                Padding="10" Margin="0,0,0,15" Background="{StaticResource BackgroundBrush}">
                             <TextBox x:Name="SourceUrlText" TextWrapping="Wrap"
