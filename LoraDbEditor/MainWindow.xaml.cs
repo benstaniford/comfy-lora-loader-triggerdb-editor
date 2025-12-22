@@ -25,6 +25,8 @@ namespace LoraDbEditor
         private bool _hasUnsavedChanges = false;
         private bool _isGitAvailable = false;
         private bool _isGitRepo = false;
+        private Point _dragStartPoint;
+        private TreeViewNode? _draggedNode;
 
         public MainWindow()
         {
@@ -211,6 +213,207 @@ namespace LoraDbEditor
             {
                 RenameSelectedLora();
                 e.Handled = true;
+            }
+        }
+
+        private void FileTreeView_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+        }
+
+        private void FileTreeView_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                Point currentPosition = e.GetPosition(null);
+                Vector diff = _dragStartPoint - currentPosition;
+
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    var treeView = sender as TreeView;
+                    if (treeView?.SelectedItem is TreeViewNode node && node.IsFile)
+                    {
+                        _draggedNode = node;
+                        var dragData = new DataObject("TreeViewNode", node);
+                        DragDrop.DoDragDrop(treeView, dragData, DragDropEffects.Move);
+                        _draggedNode = null;
+                    }
+                }
+            }
+        }
+
+        private void FileTreeView_DragOver(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent("TreeViewNode"))
+            {
+                e.Effects = DragDropEffects.None;
+                return;
+            }
+
+            var draggedNode = e.Data.GetData("TreeViewNode") as TreeViewNode;
+            if (draggedNode == null || !draggedNode.IsFile)
+            {
+                e.Effects = DragDropEffects.None;
+                return;
+            }
+
+            // Get the target node
+            var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
+            
+            if (targetNode == null)
+            {
+                // Allow drop to root
+                e.Effects = DragDropEffects.Move;
+            }
+            else if (targetNode == draggedNode)
+            {
+                // Can't drop on itself
+                e.Effects = DragDropEffects.None;
+            }
+            else if (!targetNode.IsFile)
+            {
+                // Can drop on folders
+                e.Effects = DragDropEffects.Move;
+            }
+            else
+            {
+                // Can't drop on other files
+                e.Effects = DragDropEffects.None;
+            }
+
+            e.Handled = true;
+        }
+
+        private void FileTreeView_Drop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent("TreeViewNode"))
+                return;
+
+            var draggedNode = e.Data.GetData("TreeViewNode") as TreeViewNode;
+            if (draggedNode == null || !draggedNode.IsFile)
+                return;
+
+            // Get the target node
+            var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
+
+            // Determine target directory
+            string targetDirectory = "";
+            if (targetNode != null && !targetNode.IsFile)
+            {
+                targetDirectory = targetNode.FullPath;
+            }
+
+            // Perform the move
+            MoveLoraToFolder(draggedNode.FullPath, targetDirectory);
+
+            e.Handled = true;
+        }
+
+        private TreeViewNode? GetTreeViewNodeAtPoint(Point point)
+        {
+            var hitTestResult = VisualTreeHelper.HitTest(FileTreeView, point);
+            if (hitTestResult == null)
+                return null;
+
+            var element = hitTestResult.VisualHit;
+            while (element != null && element != FileTreeView)
+            {
+                if (element is FrameworkElement fe && fe.DataContext is TreeViewNode node)
+                {
+                    return node;
+                }
+                element = VisualTreeHelper.GetParent(element);
+            }
+
+            return null;
+        }
+
+        private void MoveLoraToFolder(string sourcePath, string targetDirectory)
+        {
+            var oldPath = sourcePath;
+            var oldFullPath = Path.Combine(_database.LorasBasePath, oldPath + ".safetensors");
+
+            // Check if file exists
+            if (!File.Exists(oldFullPath))
+            {
+                MessageBox.Show("The file does not exist on disk.", "File Not Found", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // Get the filename
+            var fileName = Path.GetFileName(oldPath);
+
+            // Build new path
+            var newPath = string.IsNullOrEmpty(targetDirectory) ? fileName : targetDirectory + "/" + fileName;
+            var newFullPath = Path.Combine(_database.LorasBasePath, newPath + ".safetensors");
+
+            // Check if source and target are the same
+            if (oldPath == newPath)
+            {
+                return; // No move needed
+            }
+
+            // Check if target already exists
+            if (File.Exists(newFullPath))
+            {
+                MessageBox.Show($"A file with the same name already exists in the target folder:\n{newPath}", 
+                    "File Exists", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                // Ensure target directory exists
+                var targetDir = Path.GetDirectoryName(newFullPath);
+                if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
+
+                // Move the file on disk
+                File.Move(oldFullPath, newFullPath);
+
+                // Update the database
+                var entry = _database.GetEntry(oldPath);
+                if (entry != null)
+                {
+                    // Remove old entry
+                    _database.RemoveEntry(oldPath);
+
+                    // Update entry paths
+                    entry.Path = newPath;
+                    entry.FullPath = newFullPath;
+
+                    // Add with new path
+                    _database.AddEntry(newPath, entry);
+
+                    // Update gallery image filenames if they exist
+                    if (entry.Gallery != null && entry.Gallery.Count > 0)
+                    {
+                        UpdateGalleryFilenames(oldPath, newPath, entry);
+                    }
+                }
+
+                // Mark as changed
+                _hasUnsavedChanges = true;
+                SaveButton.IsEnabled = true;
+
+                // Refresh file list and tree view
+                _allFilePaths = _scanner.ScanForLoraFiles();
+                BuildTreeView();
+                SearchComboBox.ItemsSource = _allFilePaths;
+
+                // Load the moved entry
+                LoadLoraEntry(newPath);
+
+                StatusText.Text = $"Moved {oldPath} to {newPath}. Don't forget to save!";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error moving file: {ex.Message}", "Move Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

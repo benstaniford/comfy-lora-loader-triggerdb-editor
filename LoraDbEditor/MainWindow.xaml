@@ -67,7 +67,17 @@
                          Background="{StaticResource SurfaceBrush}"
                          BorderThickness="0"
                          SelectedItemChanged="FileTreeView_SelectedItemChanged"
-                         KeyDown="FileTreeView_KeyDown">
+                         KeyDown="FileTreeView_KeyDown"
+                         AllowDrop="True"
+                         PreviewMouseLeftButtonDown="FileTreeView_PreviewMouseLeftButtonDown"
+                         MouseMove="FileTreeView_MouseMove"
+                         DragOver="FileTreeView_DragOver"
+                         Drop="FileTreeView_Drop">
+                    <TreeView.ItemContainerStyle>
+                        <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                            <Setter Property="AllowDrop" Value="True"/>
+                        </Style>
+                    </TreeView.ItemContainerStyle>
                     <TreeView.ItemTemplate>
                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                             <StackPanel Orientation="Horizontal">
