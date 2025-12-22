@@ -939,6 +939,22 @@ namespace LoraDbEditor
                 {
                     httpClient.Timeout = TimeSpan.FromMinutes(30); // Long timeout for large files
 
+                    // Set Chrome user agent and other headers to avoid being blocked
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+                    httpClient.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
+                    httpClient.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.9");
+                    httpClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
+                    httpClient.DefaultRequestHeaders.Add("DNT", "1");
+                    httpClient.DefaultRequestHeaders.Add("Connection", "keep-alive");
+                    httpClient.DefaultRequestHeaders.Add("Upgrade-Insecure-Requests", "1");
+                    httpClient.DefaultRequestHeaders.Add("Sec-Fetch-Dest", "document");
+                    httpClient.DefaultRequestHeaders.Add("Sec-Fetch-Mode", "navigate");
+                    httpClient.DefaultRequestHeaders.Add("Sec-Fetch-Site", "none");
+                    httpClient.DefaultRequestHeaders.Add("Sec-Fetch-User", "?1");
+                    httpClient.DefaultRequestHeaders.Add("sec-ch-ua", "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"");
+                    httpClient.DefaultRequestHeaders.Add("sec-ch-ua-mobile", "?0");
+                    httpClient.DefaultRequestHeaders.Add("sec-ch-ua-platform", "\"Windows\"");
+
                     using (var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
                     {
                         response.EnsureSuccessStatusCode();
