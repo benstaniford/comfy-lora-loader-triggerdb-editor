@@ -749,7 +749,7 @@ namespace LoraDbEditor
             e.Effects = DragDropEffects.None;
         }
 
-        private void AddImageBox_Drop(object sender, DragEventArgs e)
+        private async void AddImageBox_Drop(object sender, DragEventArgs e)
         {
             if (_currentEntry == null)
                 return;
