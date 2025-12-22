@@ -97,44 +97,49 @@ namespace LoraDbEditor
             // Then, add all files from the scanned paths
             foreach (var path in _allFilePaths)
             {
-                var parts = path.Split('/');
-                var currentLevel = root;
-                string currentPath = "";
-
-                for (int i = 0; i < parts.Length; i++)
-                {
-                    var part = parts[i];
-                    currentPath = string.IsNullOrEmpty(currentPath) ? part : currentPath + "/" + part;
-                    bool isFile = (i == parts.Length - 1);
-
-                    if (!currentLevel.ContainsKey(part))
-                    {
-                        var node = new TreeViewNode
-                        {
-                            Name = part,
-                            FullPath = currentPath,
-                            IsFile = isFile
-                        };
-                        currentLevel[part] = node;
-                    }
-
-                    if (!isFile)
-                    {
-                        // Convert children to dictionary for next level
-                        var nextLevel = new Dictionary<string, TreeViewNode>();
-                        foreach (var child in currentLevel[part].Children)
-                        {
-                            nextLevel[child.Name] = child;
-                        }
-                        currentLevel = nextLevel;
-                    }
-                }
+                AddPathToTree(root, path, isFile: true);
             }
 
             // Convert dictionary to observable collection
             var rootCollection = new ObservableCollection<TreeViewNode>();
             BuildTreeRecursive(root, rootCollection);
             FileTreeView.ItemsSource = rootCollection;
+        }
+
+        private void AddPathToTree(Dictionary<string, TreeViewNode> root, string path, bool isFile)
+        {
+            var parts = path.Split('/');
+            var currentLevel = root;
+            string currentPath = "";
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var part = parts[i];
+                currentPath = string.IsNullOrEmpty(currentPath) ? part : currentPath + "/" + part;
+                bool isFileNode = isFile && (i == parts.Length - 1);
+
+                if (!currentLevel.ContainsKey(part))
+                {
+                    var node = new TreeViewNode
+                    {
+                        Name = part,
+                        FullPath = currentPath,
+                        IsFile = isFileNode
+                    };
+                    currentLevel[part] = node;
+                }
+
+                if (!isFileNode)
+                {
+                    // Move to the next level - use the node's children
+                    var nextLevel = new Dictionary<string, TreeViewNode>();
+                    foreach (var child in currentLevel[part].Children)
+                    {
+                        nextLevel[child.Name] = child;
+                    }
+                    currentLevel = nextLevel;
+                }
+            }
         }
 
         private void AddDirectoriesToTree(Dictionary<string, TreeViewNode> root, string basePath, string relativePath)
@@ -155,35 +160,8 @@ namespace LoraDbEditor
                     ? dirName 
                     : relativePath + "/" + dirName;
 
-                // Navigate to the right level in the tree
-                var parts = dirRelativePath.Split('/');
-                var currentLevel = root;
-                string currentPath = "";
-
-                for (int i = 0; i < parts.Length; i++)
-                {
-                    var part = parts[i];
-                    currentPath = string.IsNullOrEmpty(currentPath) ? part : currentPath + "/" + part;
-
-                    if (!currentLevel.ContainsKey(part))
-                    {
-                        var node = new TreeViewNode
-                        {
-                            Name = part,
-                            FullPath = currentPath,
-                            IsFile = false
-                        };
-                        currentLevel[part] = node;
-                    }
-
-                    // Convert children to dictionary for next level
-                    var nextLevel = new Dictionary<string, TreeViewNode>();
-                    foreach (var child in currentLevel[part].Children)
-                    {
-                        nextLevel[child.Name] = child;
-                    }
-                    currentLevel = nextLevel;
-                }
+                // Add this directory path to the tree
+                AddPathToTree(root, dirRelativePath, isFile: false);
 
                 // Recursively add subdirectories
                 AddDirectoriesToTree(root, basePath, dirRelativePath);
@@ -196,17 +174,20 @@ namespace LoraDbEditor
             {
                 collection.Add(kvp.Value);
 
-                if (!kvp.Value.IsFile && kvp.Value.Children != null)
+                if (!kvp.Value.IsFile)
                 {
-                    // Build dictionary from existing children
+                    // Build dictionary from existing children for recursion
                     var childDict = new Dictionary<string, TreeViewNode>();
                     foreach (var child in kvp.Value.Children)
                     {
                         childDict[child.Name] = child;
                     }
 
-                    // Recursively build children - use the existing structure
-                    BuildTreeRecursive(childDict, kvp.Value.Children);
+                    // Recursively build children
+                    if (childDict.Count > 0)
+                    {
+                        BuildTreeRecursive(childDict, kvp.Value.Children);
+                    }
                 }
             }
         }
