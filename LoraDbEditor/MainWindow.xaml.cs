@@ -444,6 +444,9 @@ namespace LoraDbEditor
                 BuildTreeView();
                 SearchComboBox.ItemsSource = _allFilePaths;
 
+                // Select the moved file in the tree
+                SelectAndExpandPath(newPath);
+
                 // Load the moved entry
                 LoadLoraEntry(newPath);
 
@@ -631,7 +634,7 @@ namespace LoraDbEditor
                 SearchComboBox.ItemsSource = _allFilePaths;
 
                 // Try to select the new folder in the tree
-                ExpandAndSelectFolder(folderPath);
+                SelectAndExpandPath(folderPath);
 
                 StatusText.Text = $"Created folder: {folderPath}";
                 MessageBox.Show($"Successfully created folder:\n\n{folderPath}", 
@@ -644,11 +647,10 @@ namespace LoraDbEditor
             }
         }
 
-        private void ExpandAndSelectFolder(string folderPath)
+        private void SelectAndExpandPath(string path)
         {
-            // This is a best-effort attempt to expand and select the new folder
-            // Walk through the tree to find and expand the path
-            var parts = folderPath.Split('/');
+            // Walk through the tree to find and select the node
+            var parts = path.Split('/');
             var nodes = FileTreeView.ItemsSource as ObservableCollection<TreeViewNode>;
             
             if (nodes == null)
@@ -668,26 +670,56 @@ namespace LoraDbEditor
 
             if (currentNode != null)
             {
-                // Find the TreeViewItem and expand/select it
-                SelectTreeViewNode(FileTreeView, currentNode);
+                // Need to wait for tree to be rendered before selecting
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    SelectTreeViewNode(FileTreeView, currentNode);
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
             }
         }
 
         private void SelectTreeViewNode(ItemsControl parent, TreeViewNode node)
         {
-            foreach (var item in parent.Items)
+            // First, we need to expand all parent nodes to ensure containers are generated
+            var pathParts = node.FullPath.Split('/');
+            ItemsControl currentParent = parent;
+            
+            for (int i = 0; i < pathParts.Length; i++)
             {
-                var container = parent.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
-                if (container != null && container.DataContext == node)
+                var part = pathParts[i];
+                var isLast = (i == pathParts.Length - 1);
+                
+                foreach (var item in currentParent.Items)
                 {
-                    container.IsSelected = true;
-                    container.BringIntoView();
-                    return;
-                }
-
-                if (container != null)
-                {
-                    SelectTreeViewNode(container, node);
+                    if (item is TreeViewNode itemNode && itemNode.Name == part)
+                    {
+                        var container = currentParent.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
+                        
+                        if (container == null)
+                        {
+                            // Container not generated yet, force generation
+                            currentParent.UpdateLayout();
+                            container = currentParent.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
+                        }
+                        
+                        if (container != null)
+                        {
+                            if (isLast)
+                            {
+                                // This is the target node - select and scroll into view
+                                container.IsSelected = true;
+                                container.BringIntoView();
+                            }
+                            else
+                            {
+                                // This is a parent node - expand it
+                                container.IsExpanded = true;
+                                container.UpdateLayout();
+                                currentParent = container;
+                            }
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -875,6 +907,9 @@ namespace LoraDbEditor
                 _allFilePaths = _scanner.ScanForLoraFiles();
                 BuildTreeView();
                 SearchComboBox.ItemsSource = _allFilePaths;
+
+                // Select the renamed file in the tree
+                SelectAndExpandPath(newPath);
 
                 // Load the renamed entry
                 LoadLoraEntry(newPath);
