@@ -262,7 +262,6 @@ namespace LoraDbEditor
                 }
 
                 // Validate File ID
-                bool showWarning = false;
                 UpdateFileIdButton.Visibility = Visibility.Collapsed;
 
                 if (_isNewEntry && entry.FileExists)
@@ -276,7 +275,6 @@ namespace LoraDbEditor
                     ExpectedFileIdText.Text = entry.CalculatedFileId ?? "(calculating...)";
                     UpdateFileIdButton.Visibility = Visibility.Visible;
                     UpdateFileIdButton.Content = "Create new record";
-                    showWarning = true;
                 }
                 else if (!entry.FileExists)
                 {
@@ -286,7 +284,6 @@ namespace LoraDbEditor
                     FileIdWarningText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F44747")!);
                     CurrentFileIdText.Text = entry.FileId ?? "(none)";
                     ExpectedFileIdText.Text = "(file missing)";
-                    showWarning = true;
                 }
                 else if (string.IsNullOrEmpty(entry.FileId) || entry.FileId == "unknown")
                 {
@@ -298,7 +295,6 @@ namespace LoraDbEditor
                     ExpectedFileIdText.Text = entry.CalculatedFileId ?? "(calculating...)";
                     UpdateFileIdButton.Visibility = Visibility.Visible;
                     UpdateFileIdButton.Content = "Update File ID";
-                    showWarning = true;
                 }
                 else if (!entry.FileIdValid)
                 {
@@ -310,7 +306,6 @@ namespace LoraDbEditor
                     ExpectedFileIdText.Text = entry.CalculatedFileId ?? "(error calculating)";
                     UpdateFileIdButton.Visibility = Visibility.Visible;
                     UpdateFileIdButton.Content = "Update File ID";
-                    showWarning = true;
                 }
                 else
                 {
