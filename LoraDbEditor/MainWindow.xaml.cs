@@ -1460,7 +1460,7 @@ namespace LoraDbEditor
                     // Convert \n to actual newlines for display
                     if (!string.IsNullOrEmpty(entry.ActiveTriggers))
                     {
-                        ActiveTriggersText.Text = entry.ActiveTriggers.Replace("\\n", Environment.NewLine);
+                        ActiveTriggersText.Text = entry.ActiveTriggers.Replace("\n", Environment.NewLine);
                     }
                     else
                     {
@@ -1470,7 +1470,7 @@ namespace LoraDbEditor
                     // Convert \n to actual newlines for display
                     if (!string.IsNullOrEmpty(entry.AllTriggers))
                     {
-                        AllTriggersText.Text = entry.AllTriggers.Replace("\\n", Environment.NewLine);
+                        AllTriggersText.Text = entry.AllTriggers.Replace("\n", Environment.NewLine);
                     }
                     else
                     {
@@ -1484,7 +1484,7 @@ namespace LoraDbEditor
                     // Convert \n to actual newlines for notes display
                     if (!string.IsNullOrEmpty(entry.Notes))
                     {
-                        NotesText.Text = entry.Notes.Replace("\\n", Environment.NewLine);
+                        NotesText.Text = entry.Notes.Replace("\n", Environment.NewLine);
                     }
                     else
                     {
@@ -1589,7 +1589,7 @@ namespace LoraDbEditor
                 return;
 
             // Convert actual newlines to \n for storage
-            var textWithEncodedNewlines = ActiveTriggersText.Text.Replace(Environment.NewLine, "\\n");
+            var textWithEncodedNewlines = ActiveTriggersText.Text.Replace(Environment.NewLine, "\n");
             _currentEntry.ActiveTriggers = textWithEncodedNewlines;
 
             // If this is a new entry, add it to the database
@@ -1611,7 +1611,7 @@ namespace LoraDbEditor
                 return;
 
             // Convert actual newlines to \n for storage
-            var textWithEncodedNewlines = AllTriggersText.Text.Replace(Environment.NewLine, "\\n");
+            var textWithEncodedNewlines = AllTriggersText.Text.Replace(Environment.NewLine, "\n");
             _currentEntry.AllTriggers = textWithEncodedNewlines;
 
             // If this is a new entry, add it to the database
@@ -1771,7 +1771,7 @@ namespace LoraDbEditor
                 return;
 
             // Convert actual newlines to \n for storage
-            var textWithEncodedNewlines = NotesText.Text.Replace(Environment.NewLine, "\\n");
+            var textWithEncodedNewlines = NotesText.Text.Replace(Environment.NewLine, "\n");
             _currentEntry.Notes = string.IsNullOrWhiteSpace(textWithEncodedNewlines) ? null : textWithEncodedNewlines;
 
             // If this is a new entry, add it to the database
