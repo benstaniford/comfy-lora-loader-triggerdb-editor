@@ -67,7 +67,8 @@
                   Name="LoRA DB Editor"
                   Description="ComfyUI LoRA safetensor file and trigger word database manager"
                   Target="[INSTALLFOLDER]LoraDbEditor.exe"
-                  WorkingDirectory="INSTALLFOLDER"/>
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="icon.ico"/>
         <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall"/>
         <RegistryValue Root="HKCU"
                        Key="Software\LoraDbEditor"
@@ -85,7 +86,8 @@
                   Name="LoRA DB Editor"
                   Description="ComfyUI LoRA safetensor file and trigger word database manager"
                   Target="[INSTALLFOLDER]LoraDbEditor.exe"
-                  WorkingDirectory="INSTALLFOLDER"/>
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="icon.ico"/>
         <RemoveFolder Id="CleanUpDesktopShortcut" Directory="DesktopFolder" On="uninstall"/>
         <RegistryValue Root="HKCU"
                        Key="Software\LoraDbEditor"

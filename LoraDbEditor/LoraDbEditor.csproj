@@ -6,6 +6,7 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>lora-edit.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
