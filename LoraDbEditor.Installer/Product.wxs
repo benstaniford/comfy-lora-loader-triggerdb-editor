@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?define ProductVersion="1.0.0.0" ?>
+  <?define ProductName="LoRA DB Editor" ?>
+  <?define Manufacturer="LoRA DB Editor" ?>
+  <?define UpgradeCode="{F1A2B3C4-5D6E-7F8A-9B0C-1D2E3F4A5B6C}" ?>
+
+  <Product Id="*"
+           Name="$(var.ProductName)"
+           Language="1033"
+           Version="$(var.ProductVersion)"
+           Manufacturer="$(var.Manufacturer)"
+           UpgradeCode="$(var.UpgradeCode)">
+
+    <Package InstallerVersion="200"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="$(var.ProductName) Installer"
+             Comments="ComfyUI LoRA safetensor file and trigger word database manager" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Note: .NET 8 Runtime required but not checked during installation -->
+    <!-- Users should install from: https://dotnet.microsoft.com/download/dotnet/8.0 -->
+
+    <!-- Installation directory structure -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="LoraDbEditor" />
+      </Directory>
+
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="LoRA DB Editor"/>
+      </Directory>
+
+      <Directory Id="DesktopFolder" Name="Desktop" />
+    </Directory>
+
+    <!-- Components -->
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="LoraDbEditorExe" Guid="{2B3C4D5E-6F7A-8B9C-0D1E-2F3A4B5C6D7E}">
+        <File Id="LoraDbEditorEXE"
+              Source="$(var.LoraDbEditor.TargetDir)LoraDbEditor.exe"
+              KeyPath="yes"
+              Checksum="yes" />
+        <File Id="LoraDbEditorDLL"
+              Source="$(var.LoraDbEditor.TargetDir)LoraDbEditor.dll" />
+        <File Id="LoraDbEditorRuntimeConfigJson"
+              Source="$(var.LoraDbEditor.TargetDir)LoraDbEditor.runtimeconfig.json" />
+        <File Id="LoraDbEditorDepsJsonFile"
+              Source="$(var.LoraDbEditor.TargetDir)LoraDbEditor.deps.json" />
+      </Component>
+
+      <!-- NuGet Dependencies -->
+      <Component Id="NewtonsoftJson" Guid="{3C4D5E6F-7A8B-9C0D-1E2F-3A4B5C6D7E8F}">
+        <File Id="NewtonsoftJsonDll"
+              Source="$(var.LoraDbEditor.TargetDir)Newtonsoft.Json.dll"
+              KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Start Menu Shortcut -->
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="{4D5E6F7A-8B9C-0D1E-2F3A-4B5C6D7E8F9A}">
+        <Shortcut Id="ApplicationStartMenuShortcut"
+                  Name="LoRA DB Editor"
+                  Description="ComfyUI LoRA safetensor file and trigger word database manager"
+                  Target="[INSTALLFOLDER]LoraDbEditor.exe"
+                  WorkingDirectory="INSTALLFOLDER"/>
+        <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall"/>
+        <RegistryValue Root="HKCU"
+                       Key="Software\LoraDbEditor"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes"/>
+      </Component>
+    </DirectoryRef>
+
+    <!-- Desktop Shortcut (Optional) -->
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="{5E6F7A8B-9C0D-1E2F-3A4B-5C6D7E8F9A0B}">
+        <Shortcut Id="DesktopShortcut"
+                  Name="LoRA DB Editor"
+                  Description="ComfyUI LoRA safetensor file and trigger word database manager"
+                  Target="[INSTALLFOLDER]LoraDbEditor.exe"
+                  WorkingDirectory="INSTALLFOLDER"/>
+        <RemoveFolder Id="CleanUpDesktopShortcut" Directory="DesktopFolder" On="uninstall"/>
+        <RegistryValue Root="HKCU"
+                       Key="Software\LoraDbEditor"
+                       Name="desktopShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes"/>
+      </Component>
+    </DirectoryRef>
+
+    <!-- Features -->
+    <Feature Id="ProductFeature" Title="LoRA DB Editor" Level="1">
+      <ComponentRef Id="LoraDbEditorExe" />
+      <ComponentRef Id="NewtonsoftJson" />
+      <ComponentRef Id="ApplicationShortcut" />
+    </Feature>
+
+    <Feature Id="DesktopShortcutFeature" Title="Desktop Shortcut" Level="1">
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+
+    <!-- UI -->
+    <UIRef Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+    <!-- License -->
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <!-- Icons -->
+    <Icon Id="icon.ico" SourceFile="LoraDbEditor.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="icon.ico" />
+
+    <!-- Add/Remove Programs -->
+    <Property Id="ARPHELPLINK" Value="https://github.com/yourusername/comfy-lora-loader-triggerdb-editor" />
+  </Product>
+</Wix>

@@ -1,0 +1,242 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+  packages: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            echo "VERSION=${{ github.event.inputs.version }}" >> $env:GITHUB_OUTPUT
+          } else {
+            $version = "${{ github.ref_name }}"
+            echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          }
+          $numericVersion = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ github.event.inputs.version }}" } else { "${{ github.ref_name }}" }
+          $numericVersion = $numericVersion -replace '^v', ''
+          echo "NUMERIC_VERSION=$numericVersion" >> $env:GITHUB_OUTPUT
+          echo "Version: $numericVersion"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup WiX Toolset
+        run: |
+          Write-Host "Installing WiX Toolset..."
+          choco install wixtoolset -y --no-progress
+          Write-Host "Refreshing environment..."
+          refreshenv
+          # Add WiX to PATH for this session
+          $env:PATH += ";C:\Program Files (x86)\WiX Toolset v3.11\bin"
+          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+
+      - name: Update WiX Product Version
+        run: |
+          $version = "${{ steps.version.outputs.NUMERIC_VERSION }}"
+          $wxsPath = "LoraDbEditor.Installer/Product.wxs"
+
+          Write-Host "Updating Product.wxs with version: $version"
+
+          # Read the current content
+          $content = Get-Content $wxsPath -Raw
+
+          # Update the version define at the top of the file
+          $content = $content -replace '(?<=<\?define ProductVersion=")[\d\.]*(?=" \?>)', $version
+
+          # Write back to file
+          Set-Content $wxsPath -Value $content -NoNewline
+
+          Write-Host "✓ Product.wxs updated"
+          Write-Host "Updated version line:"
+          Get-Content $wxsPath | Select-String "define ProductVersion"
+
+      - name: Restore dependencies
+        run: dotnet restore LoraDbEditor/LoraDbEditor.csproj
+
+      - name: Build LoraDbEditor Application
+        run: dotnet build LoraDbEditor/LoraDbEditor.csproj -c Release --no-restore
+
+      - name: Publish LoraDbEditor Application
+        run: dotnet publish LoraDbEditor/LoraDbEditor.csproj -c Release -o LoraDbEditor/bin/Release/net8.0-windows/publish --no-build
+
+      - name: Build WiX Installer
+        run: |
+          $env:PATH += ";C:\Program Files (x86)\WiX Toolset v3.11\bin"
+          Write-Host "Building WiX installer..."
+          msbuild LoraDbEditor.Installer/LoraDbEditor.Installer.wixproj /p:Configuration=Release /p:Platform=x64 /v:normal
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "✗ WiX build failed with exit code: $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          Write-Host "✓ WiX build completed"
+
+      - name: Verify and rename MSI file
+        run: |
+          $version = "${{ steps.version.outputs.NUMERIC_VERSION }}"
+
+          Write-Host "Looking for MSI files..."
+          Write-Host "Contents of LoraDbEditor.Installer directory:"
+          Get-ChildItem LoraDbEditor.Installer -Recurse -ErrorAction SilentlyContinue | Where-Object {$_.Extension -eq ".msi"} | Format-Table FullName, Length
+
+          # Handle MSI file
+          $originalPath = "LoraDbEditor.Installer/bin/x64/Release/LoraDbEditor.msi"
+          $newFileName = "LoraDbEditorInstaller-v$version-x64.msi"
+
+          if (Test-Path $originalPath) {
+            Write-Host "✓ MSI file found: $originalPath"
+            $size = (Get-Item $originalPath).Length
+            Write-Host "✓ MSI size: $([math]::Round($size / 1MB, 2)) MB"
+
+            # Copy to root with new name
+            Copy-Item -Path $originalPath -Destination $newFileName
+            Write-Host "✓ MSI copied to root directory as: $newFileName"
+          } else {
+            Write-Host "✗ MSI file not found: $originalPath"
+            exit 1
+          }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: loradbeditor-windows
+          path: LoraDbEditorInstaller-v${{ steps.version.outputs.NUMERIC_VERSION }}-x64.msi
+
+  create-release:
+    needs: [build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            VERSION=${{ github.ref_name }}
+            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          fi
+          NUMERIC_VERSION=$(echo "${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}" | sed 's/^v//')
+          echo "NUMERIC_VERSION=$NUMERIC_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          NUMERIC_VERSION="${{ steps.version.outputs.NUMERIC_VERSION }}"
+
+          # Build release notes with installation instructions
+          cat > release_notes.md << EOF
+          # LoRA DB Editor $VERSION
+
+          A WPF desktop application for managing ComfyUI LoRA safetensor files and their trigger word database.
+
+          ## Downloads
+
+          ### Windows Installer
+          - **LoraDbEditorInstaller-v${NUMERIC_VERSION}-x64.msi** - Windows MSI installer (64-bit)
+
+          ## Installation
+
+          ### Windows
+          1. Download \`LoraDbEditorInstaller-v${NUMERIC_VERSION}-x64.msi\`
+          2. Run the MSI installer
+          3. The application will be installed to Program Files
+          4. Desktop and Start Menu shortcuts will be created
+
+          ## System Requirements
+
+          ### Windows
+          - **Operating System**: Windows 10 or later (64-bit)
+          - **.NET Runtime**: .NET 8.0 Runtime (Desktop) - [Download here](https://dotnet.microsoft.com/download/dotnet/8.0)
+          - **Disk Space**: ~20 MB
+
+          ## Features
+
+          - Browse and manage LoRA files in your ComfyUI installation
+          - Edit trigger words and metadata for each LoRA
+          - Validate file IDs to ensure database integrity
+          - Fuzzy search for quick file navigation
+          - Gallery support for preview images
+          - Drag and drop support for URLs and images
+
+          ## File Locations
+
+          The application manages files in these locations:
+          - **JSON Database**: \`%USERPROFILE%\\Documents\\ComfyUI\\user\\default\\user-db\\lora-triggers.json\`
+          - **LoRA Files**: \`%USERPROFILE%\\Documents\\ComfyUI\\models\\loras\\\`
+          - **Gallery Images**: \`%USERPROFILE%\\Documents\\ComfyUI\\user\\default\\user-db\\lora-triggers-pictures\\\`
+          EOF
+
+          echo "✓ Release notes generated"
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+
+          echo "Creating release for tag: $VERSION"
+
+          # Check if release already exists
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists, will add artifacts to it..."
+          else
+            # Create the release
+            echo "Creating GitHub release..."
+            gh release create "$VERSION" \
+              --title "LoRA DB Editor $VERSION" \
+              --notes-file "release_notes.md" \
+              --latest
+          fi
+
+          echo "✓ GitHub release ready"
+
+      - name: Upload Windows MSI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          NUMERIC_VERSION="${{ steps.version.outputs.NUMERIC_VERSION }}"
+
+          WINDOWS_ASSET="artifacts/loradbeditor-windows/LoraDbEditorInstaller-v${NUMERIC_VERSION}-x64.msi"
+
+          echo "Uploading Windows MSI to release..."
+          gh release upload "$VERSION" "$WINDOWS_ASSET" --clobber
+          echo "✓ Windows MSI uploaded successfully"

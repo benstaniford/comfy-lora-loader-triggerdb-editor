@@ -5,16 +5,30 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoraDbEditor", "LoraDbEditor\LoraDbEditor.csproj", "{8B3F5C6D-9A2E-4F1B-8C3D-7E9F4A5B6C2D}"
 EndProject
+Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "LoraDbEditor.Installer", "LoraDbEditor.Installer\LoraDbEditor.Installer.wixproj", "{8E9F0A1B-2C3D-4E5F-6A7B-8C9D0E1F2A3B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{8B3F5C6D-9A2E-4F1B-8C3D-7E9F4A5B6C2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8B3F5C6D-9A2E-4F1B-8C3D-7E9F4A5B6C2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B3F5C6D-9A2E-4F1B-8C3D-7E9F4A5B6C2D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8B3F5C6D-9A2E-4F1B-8C3D-7E9F4A5B6C2D}.Debug|x64.Build.0 = Debug|Any CPU
 		{8B3F5C6D-9A2E-4F1B-8C3D-7E9F4A5B6C2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8B3F5C6D-9A2E-4F1B-8C3D-7E9F4A5B6C2D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B3F5C6D-9A2E-4F1B-8C3D-7E9F4A5B6C2D}.Release|x64.ActiveCfg = Release|Any CPU
+		{8B3F5C6D-9A2E-4F1B-8C3D-7E9F4A5B6C2D}.Release|x64.Build.0 = Release|Any CPU
+		{8E9F0A1B-2C3D-4E5F-6A7B-8C9D0E1F2A3B}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{8E9F0A1B-2C3D-4E5F-6A7B-8C9D0E1F2A3B}.Debug|x64.ActiveCfg = Debug|x64
+		{8E9F0A1B-2C3D-4E5F-6A7B-8C9D0E1F2A3B}.Debug|x64.Build.0 = Debug|x64
+		{8E9F0A1B-2C3D-4E5F-6A7B-8C9D0E1F2A3B}.Release|Any CPU.ActiveCfg = Release|x64
+		{8E9F0A1B-2C3D-4E5F-6A7B-8C9D0E1F2A3B}.Release|x64.ActiveCfg = Release|x64
+		{8E9F0A1B-2C3D-4E5F-6A7B-8C9D0E1F2A3B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
