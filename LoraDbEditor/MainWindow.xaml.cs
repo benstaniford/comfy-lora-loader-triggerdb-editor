@@ -689,7 +689,7 @@ namespace LoraDbEditor
             return null;
         }
 
-        private void MoveLoraToFolder(string sourcePath, string targetDirectory)
+        private async void MoveLoraToFolder(string sourcePath, string targetDirectory)
         {
             var oldPath = sourcePath;
             var oldFullPath = Path.Combine(_database.LorasBasePath, oldPath + ".safetensors");
@@ -754,9 +754,13 @@ namespace LoraDbEditor
                     }
                 }
 
-                // Mark as changed
-                _hasUnsavedChanges = true;
-                SaveButton.IsEnabled = true;
+                // Auto-save the database
+                if (entry != null)
+                {
+                    await _database.SaveAsync();
+                    _hasUnsavedChanges = false;
+                    SaveButton.IsEnabled = false;
+                }
 
                 // Refresh file list and tree view
                 _allFilePaths = _scanner.ScanForLoraFiles();
@@ -769,7 +773,7 @@ namespace LoraDbEditor
                 // Load the moved entry
                 LoadLoraEntry(newPath);
 
-                StatusText.Text = $"Moved {oldPath} to {newPath}. Don't forget to save!";
+                UpdateStatus($"Successfully moved {oldPath} to {newPath}.");
             }
             catch (Exception ex)
             {
@@ -1041,7 +1045,7 @@ namespace LoraDbEditor
             }
         }
 
-        private void RenameSelectedLora()
+        private async void RenameSelectedLora()
         {
             if (FileTreeView.SelectedItem is not TreeViewNode node || !node.IsFile)
             {
@@ -1211,9 +1215,13 @@ namespace LoraDbEditor
                     }
                 }
 
-                // Mark as changed
-                _hasUnsavedChanges = true;
-                SaveButton.IsEnabled = true;
+                // Auto-save the database
+                if (entry != null)
+                {
+                    await _database.SaveAsync();
+                    _hasUnsavedChanges = false;
+                    SaveButton.IsEnabled = false;
+                }
 
                 // Refresh file list and tree view
                 _allFilePaths = _scanner.ScanForLoraFiles();
@@ -1226,7 +1234,7 @@ namespace LoraDbEditor
                 // Load the renamed entry
                 LoadLoraEntry(newPath);
 
-                UpdateStatus($"Successfully renamed from {oldPath} to {newPath}. Don't forget to save!");
+                UpdateStatus($"Successfully renamed from {oldPath} to {newPath}.");
             }
             catch (Exception ex)
             {
@@ -1285,7 +1293,7 @@ namespace LoraDbEditor
             entry.Gallery = updatedGallery;
         }
 
-        private void DeleteSelectedLora()
+        private async void DeleteSelectedLora()
         {
             if (FileTreeView.SelectedItem is not TreeViewNode node || !node.IsFile)
             {
@@ -1339,8 +1347,6 @@ namespace LoraDbEditor
                 if (entry != null)
                 {
                     _database.RemoveEntry(loraPath);
-                    _hasUnsavedChanges = true;
-                    SaveButton.IsEnabled = true;
                 }
 
                 // Delete the .safetensors file if it exists
@@ -1356,12 +1362,20 @@ namespace LoraDbEditor
                     DetailsPanel.Visibility = Visibility.Collapsed;
                 }
 
+                // Auto-save the database
+                if (entry != null)
+                {
+                    await _database.SaveAsync();
+                    _hasUnsavedChanges = false;
+                    SaveButton.IsEnabled = false;
+                }
+
                 // Refresh file list and tree view
                 _allFilePaths = _scanner.ScanForLoraFiles();
                 BuildTreeView();
                 SearchComboBox.ItemsSource = _allFilePaths;
 
-                UpdateStatus($"Successfully deleted {loraPath}. Don't forget to save!");
+                UpdateStatus($"Successfully deleted {loraPath}.");
             }
             catch (Exception ex)
             {
