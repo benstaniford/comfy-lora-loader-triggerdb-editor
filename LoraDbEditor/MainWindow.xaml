@@ -89,6 +89,7 @@
                     <TreeView.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="Rename" Click="RenameMenuItem_Click"/>
+                            <MenuItem Header="Delete" Click="DeleteMenuItem_Click"/>
                             <Separator/>
                             <MenuItem Header="New Folder" Click="NewFolderMenuItem_Click"/>
                         </ContextMenu>

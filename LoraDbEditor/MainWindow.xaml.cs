@@ -256,6 +256,11 @@ namespace LoraDbEditor
                 RenameSelectedLora();
                 e.Handled = true;
             }
+            else if (e.Key == Key.Delete)
+            {
+                DeleteSelectedLora();
+                e.Handled = true;
+            }
         }
 
         private void FileTreeView_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -604,6 +609,11 @@ namespace LoraDbEditor
         private void NewFolderMenuItem_Click(object sender, RoutedEventArgs e)
         {
             CreateNewFolder();
+        }
+
+        private void DeleteMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            DeleteSelectedLora();
         }
 
         private void CreateNewFolder()
@@ -1111,6 +1121,94 @@ namespace LoraDbEditor
             }
 
             entry.Gallery = updatedGallery;
+        }
+
+        private void DeleteSelectedLora()
+        {
+            if (FileTreeView.SelectedItem is not TreeViewNode node || !node.IsFile)
+            {
+                MessageBox.Show("Please select a LoRA file to delete.", "No File Selected",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var loraPath = node.FullPath;
+            var fullPath = Path.Combine(_database.LorasBasePath, loraPath + ".safetensors");
+
+            // Confirm deletion
+            var result = MessageBox.Show(
+                $"Are you sure you want to delete this LoRA?\n\n{loraPath}\n\nThis will delete:\n- The .safetensors file\n- The database entry (if it exists)\n- All associated gallery images\n\nThis action cannot be undone!",
+                "Confirm Delete",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                // Get the database entry if it exists (to delete gallery images)
+                var entry = _database.GetEntry(loraPath);
+
+                // Delete gallery images if they exist
+                if (entry?.Gallery != null && entry.Gallery.Count > 0)
+                {
+                    var safePath = loraPath.Replace("/", "_").Replace("\\", "_");
+                    foreach (var imageName in entry.Gallery)
+                    {
+                        try
+                        {
+                            var imagePath = Path.Combine(_galleryBasePath, imageName);
+                            if (File.Exists(imagePath))
+                            {
+                                File.Delete(imagePath);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log but continue - don't fail the whole operation for a gallery image
+                            System.Diagnostics.Debug.WriteLine($"Failed to delete gallery image {imageName}: {ex.Message}");
+                        }
+                    }
+                }
+
+                // Delete the database entry if it exists
+                if (entry != null)
+                {
+                    _database.RemoveEntry(loraPath);
+                    _hasUnsavedChanges = true;
+                    SaveButton.IsEnabled = true;
+                }
+
+                // Delete the .safetensors file if it exists
+                if (File.Exists(fullPath))
+                {
+                    File.Delete(fullPath);
+                }
+
+                // Clear the details panel if this was the currently loaded entry
+                if (_currentEntry?.Path == loraPath)
+                {
+                    _currentEntry = null;
+                    DetailsPanel.Visibility = Visibility.Collapsed;
+                }
+
+                // Refresh file list and tree view
+                _allFilePaths = _scanner.ScanForLoraFiles();
+                BuildTreeView();
+                SearchComboBox.ItemsSource = _allFilePaths;
+
+                StatusText.Text = $"Deleted {loraPath}. Don't forget to save!";
+                MessageBox.Show($"Successfully deleted:\n\n{loraPath}",
+                    "Delete Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error deleting file: {ex.Message}", "Delete Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void LoadLoraEntry(string path)
