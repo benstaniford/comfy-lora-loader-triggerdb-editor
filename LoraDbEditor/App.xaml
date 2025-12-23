@@ -145,11 +145,95 @@
         <Style TargetType="{x:Type MenuItem}">
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Style.Triggers>
-                <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type MenuItem}">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Icon"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Shortcut"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <ContentPresenter x:Name="Icon"
+                                                Grid.Column="0"
+                                                Margin="6,0,6,0"
+                                                VerticalAlignment="Center"
+                                                ContentSource="Icon"/>
+
+                                <ContentPresenter x:Name="HeaderHost"
+                                                Grid.Column="1"
+                                                ContentSource="Header"
+                                                RecognizesAccessKey="True"
+                                                VerticalAlignment="Center"
+                                                Margin="0,4,0,4"/>
+
+                                <TextBlock x:Name="InputGestureText"
+                                         Grid.Column="2"
+                                         Text="{TemplateBinding InputGestureText}"
+                                         Margin="5,2,2,2"
+                                         DockPanel.Dock="Right"
+                                         VerticalAlignment="Center"/>
+
+                                <Path x:Name="ArrowPath"
+                                    Grid.Column="3"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Margin="4,0,6,0"
+                                    Fill="{StaticResource TextBrush}"
+                                    Data="M 0 0 L 0 7 L 4 3.5 Z"
+                                    Visibility="Collapsed"/>
+
+                                <Popup x:Name="Popup"
+                                     Placement="Right"
+                                     HorizontalOffset="-4"
+                                     IsOpen="{TemplateBinding IsSubmenuOpen}"
+                                     AllowsTransparency="True"
+                                     Focusable="False"
+                                     PopupAnimation="Fade">
+                                    <Border x:Name="SubmenuBorder"
+                                          SnapsToDevicePixels="True"
+                                          Background="{StaticResource SurfaceBrush}"
+                                          BorderBrush="{StaticResource BorderBrush}"
+                                          BorderThickness="1">
+                                        <Grid x:Name="SubMenu" Grid.IsSharedSizeScope="True">
+                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                        </Grid>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Icon" Value="{x:Null}">
+                                <Setter TargetName="Icon" Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource HoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#888888"/>
+                            </Trigger>
+                            <Trigger Property="Role" Value="TopLevelHeader">
+                                <Setter Property="Padding" Value="6,1,6,1"/>
+                            </Trigger>
+                            <Trigger Property="Role" Value="TopLevelItem">
+                                <Setter Property="Padding" Value="6,1,6,1"/>
+                            </Trigger>
+                            <Trigger Property="Role" Value="SubmenuHeader">
+                                <Setter TargetName="ArrowPath" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="Role" Value="SubmenuItem">
+                                <Setter Property="DockPanel.Dock" Value="Top"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="{x:Type Separator}">
