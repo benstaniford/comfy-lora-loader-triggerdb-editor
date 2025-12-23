@@ -760,6 +760,12 @@ namespace LoraDbEditor
                     await _database.SaveAsync();
                     _hasUnsavedChanges = false;
                     SaveButton.IsEnabled = false;
+
+                    // Update git button state after saving
+                    if (_isGitAvailable && _isGitRepo)
+                    {
+                        await UpdateCommitButtonStateAsync();
+                    }
                 }
 
                 // Refresh file list and tree view
@@ -1221,6 +1227,12 @@ namespace LoraDbEditor
                     await _database.SaveAsync();
                     _hasUnsavedChanges = false;
                     SaveButton.IsEnabled = false;
+
+                    // Update git button state after saving
+                    if (_isGitAvailable && _isGitRepo)
+                    {
+                        await UpdateCommitButtonStateAsync();
+                    }
                 }
 
                 // Refresh file list and tree view
@@ -1368,6 +1380,12 @@ namespace LoraDbEditor
                     await _database.SaveAsync();
                     _hasUnsavedChanges = false;
                     SaveButton.IsEnabled = false;
+
+                    // Update git button state after saving
+                    if (_isGitAvailable && _isGitRepo)
+                    {
+                        await UpdateCommitButtonStateAsync();
+                    }
                 }
 
                 // Refresh file list and tree view
