@@ -1520,15 +1520,8 @@ namespace LoraDbEditor
                 _isLoadingEntry = true;
                 try
                 {
-                    // Convert \n to actual newlines for description display
-                    if (!string.IsNullOrEmpty(entry.Description))
-                    {
-                        DescriptionText.Text = entry.Description.Replace("\n", Environment.NewLine);
-                    }
-                    else
-                    {
-                        DescriptionText.Text = "";
-                    }
+                    // Load description (single line field)
+                    DescriptionText.Text = entry.Description ?? "";
 
                     // Convert \n to actual newlines for display
                     if (!string.IsNullOrEmpty(entry.ActiveTriggers))
@@ -1867,9 +1860,8 @@ namespace LoraDbEditor
             if (_isLoadingEntry || _currentEntry == null)
                 return;
 
-            // Convert actual newlines to \n for storage
-            var textWithEncodedNewlines = DescriptionText.Text.Replace(Environment.NewLine, "\n");
-            _currentEntry.Description = string.IsNullOrWhiteSpace(textWithEncodedNewlines) ? null : textWithEncodedNewlines;
+            // Update the entry
+            _currentEntry.Description = string.IsNullOrWhiteSpace(DescriptionText.Text) ? null : DescriptionText.Text;
 
             // If this is a new entry, add it to the database
             if (_isNewEntry && _currentEntry.FileExists)

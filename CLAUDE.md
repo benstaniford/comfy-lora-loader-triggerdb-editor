@@ -105,7 +105,7 @@ This algorithm matches the Python implementation in `~/dot-files/scripts/get-fil
   - Editable ComboBox with fuzzy search
   - File path title
   - Editable text fields:
-    - Description (multiline, converts `\n` to actual newlines for display)
+    - Description (single line)
   - File ID section with validation warnings
   - Editable text fields:
     - Active Triggers (multiline, converts `\n` to actual newlines for display)
@@ -148,6 +148,6 @@ When adding new UI controls, use these resource keys to maintain visual consiste
 
 - **Optional Field Serialization**: Optional fields (`source_url`, `suggested_strength`, `notes`, `description`) are stored as `null` in JSON when empty or whitespace-only. This is handled by checking `string.IsNullOrWhiteSpace()` before assignment in TextChanged handlers.
 
-- **Newline Encoding**: The `active_triggers`, `all_triggers`, `notes`, and `description` fields support multiline text. Actual newlines (`Environment.NewLine`) are converted to `\n` for JSON storage and converted back for display. This ensures consistent serialization across different platforms.
+- **Newline Encoding**: The `active_triggers`, `all_triggers`, and `notes` fields support multiline text. Actual newlines (`Environment.NewLine`) are converted to `\n` for JSON storage and converted back for display. This ensures consistent serialization across different platforms. The `description` field is single-line and does not perform newline conversion.
 
 - **Gallery Management**: The gallery is stored as an array of filenames in the JSON. Image files are stored in a centralized folder (`lora-triggers-pictures`). When adding an image via drag and drop, the file is copied with a unique name format: `{safePath}_{timestamp}{extension}`, where `safePath` is the LoRA path with slashes replaced by underscores. The `LoadGallery()` method dynamically creates Border+Image controls and inserts them before the "Add Image" box. Clicking an image opens it using `Process.Start()` with `UseShellExecute = true`.
