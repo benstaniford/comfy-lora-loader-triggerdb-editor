@@ -1,0 +1,1 @@
+ssh ben@fangorn -C 'cd ~/Code/comfy-lora-loader-triggerdb-editor; git add -A; git commit -am "Update" && git push' ; git pull
