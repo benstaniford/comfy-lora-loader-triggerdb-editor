@@ -151,6 +151,18 @@
             <Border Grid.Row="2" BorderThickness="1" Background="{StaticResource SurfaceBrush}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="DetailsPanel" Margin="15" Visibility="Collapsed">
+                        <!-- Description Section -->
+                        <TextBlock Text="Description" FontWeight="Bold" FontSize="13"
+                                  Margin="0,0,0,5" Foreground="{StaticResource TextBrush}"/>
+                        <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}"
+                               Padding="10" Margin="0,0,0,15" Background="{StaticResource BackgroundBrush}">
+                            <TextBox x:Name="DescriptionText" TextWrapping="Wrap"
+                                    MinHeight="80" AcceptsReturn="True"
+                                    BorderThickness="0" Background="Transparent"
+                                    Foreground="{StaticResource TextBrush}"
+                                    TextChanged="DescriptionText_TextChanged"/>
+                        </Border>
+
                         <!-- File ID Section -->
                         <TextBlock Text="File ID" FontWeight="Bold" FontSize="13"
                                   Margin="0,0,0,5" Foreground="{StaticResource TextBrush}"/>

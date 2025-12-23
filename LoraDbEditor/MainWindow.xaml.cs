@@ -1520,6 +1520,16 @@ namespace LoraDbEditor
                 _isLoadingEntry = true;
                 try
                 {
+                    // Convert \n to actual newlines for description display
+                    if (!string.IsNullOrEmpty(entry.Description))
+                    {
+                        DescriptionText.Text = entry.Description.Replace("\n", Environment.NewLine);
+                    }
+                    else
+                    {
+                        DescriptionText.Text = "";
+                    }
+
                     // Convert \n to actual newlines for display
                     if (!string.IsNullOrEmpty(entry.ActiveTriggers))
                     {
@@ -1838,6 +1848,28 @@ namespace LoraDbEditor
             // Convert actual newlines to \n for storage
             var textWithEncodedNewlines = NotesText.Text.Replace(Environment.NewLine, "\n");
             _currentEntry.Notes = string.IsNullOrWhiteSpace(textWithEncodedNewlines) ? null : textWithEncodedNewlines;
+
+            // If this is a new entry, add it to the database
+            if (_isNewEntry && _currentEntry.FileExists)
+            {
+                _database.AddEntry(_currentEntry.Path, _currentEntry);
+                _isNewEntry = false; // No longer new since it's in the database
+            }
+
+            // Mark as changed
+            _hasUnsavedChanges = true;
+            SaveButton.IsEnabled = true;
+            StatusText.Text = $"Modified: {_currentEntry.Path}. Don't forget to save!";
+        }
+
+        private void DescriptionText_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoadingEntry || _currentEntry == null)
+                return;
+
+            // Convert actual newlines to \n for storage
+            var textWithEncodedNewlines = DescriptionText.Text.Replace(Environment.NewLine, "\n");
+            _currentEntry.Description = string.IsNullOrWhiteSpace(textWithEncodedNewlines) ? null : textWithEncodedNewlines;
 
             // If this is a new entry, add it to the database
             if (_isNewEntry && _currentEntry.FileExists)

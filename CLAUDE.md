@@ -37,7 +37,7 @@ The `lora-triggers.json` file uses a specific structure:
 - **Keys**: Relative file paths WITHOUT the `.safetensors` extension (e.g., `"chroma/80sFantasyMovieChroma"`)
 - **Newlines**: Encoded as `\n` in strings (e.g., `"trigger1\nRecommended Strength: 1.0"`)
 - **Required fields**: `active_triggers`, `all_triggers`
-- **Optional fields**: `file_id`, `source_url`, `suggested_strength`, `notes`, `gallery` (may be absent, `null`, or `"unknown"` for legacy entries)
+- **Optional fields**: `file_id`, `source_url`, `suggested_strength`, `notes`, `description`, `gallery` (may be absent, `null`, or `"unknown"` for legacy entries)
 - **Gallery field**: Array of filenames (not full paths) stored in `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers-pictures\`
 
 ```json
@@ -49,6 +49,7 @@ The `lora-triggers.json` file uses a specific structure:
     "source_url": "https://civitai.com/models/12345",
     "suggested_strength": "0.8-1.2",
     "notes": "Works well with landscapes\nBest at 1024x1024",
+    "description": "A fantasy-themed LoRA for creating 80s movie aesthetics",
     "gallery": [
       "path_to_lora_20231201120000.png",
       "path_to_lora_20231201120030.jpg"
@@ -103,6 +104,8 @@ This algorithm matches the Python implementation in `~/dot-files/scripts/get-fil
 - **Right Panel**:
   - Editable ComboBox with fuzzy search
   - File path title
+  - Editable text fields:
+    - Description (multiline, converts `\n` to actual newlines for display)
   - File ID section with validation warnings
   - Editable text fields:
     - Active Triggers (multiline, converts `\n` to actual newlines for display)
@@ -139,12 +142,12 @@ When adding new UI controls, use these resource keys to maintain visual consiste
 
 - **Unsaved Changes Tracking**: `_hasUnsavedChanges` flag is set when any field is edited, enables Save button, and triggers confirmation dialog on window close.
 
-- **Editable Fields**: All fields (Active Triggers, All Triggers, Source URL, Suggested Strength, Notes) are editable. TextChanged events automatically update the in-memory entry and mark the database as having unsaved changes. The `_isLoadingEntry` flag prevents TextChanged handlers from firing during initial data load.
+- **Editable Fields**: All fields (Description, Active Triggers, All Triggers, Source URL, Suggested Strength, Notes) are editable. TextChanged events automatically update the in-memory entry and mark the database as having unsaved changes. The `_isLoadingEntry` flag prevents TextChanged handlers from firing during initial data load.
 
 - **Drag and Drop URLs**: The Source URL field supports drag and drop from browsers. It handles multiple data formats (`DataFormats.Text`, `DataFormats.UnicodeText`, `DataFormats.Html`) and extracts URLs from HTML using regex pattern matching for `href` attributes. Both `PreviewDragOver` and `Drop` events are handled.
 
-- **Optional Field Serialization**: Optional fields (`source_url`, `suggested_strength`, `notes`) are stored as `null` in JSON when empty or whitespace-only. This is handled by checking `string.IsNullOrWhiteSpace()` before assignment in TextChanged handlers.
+- **Optional Field Serialization**: Optional fields (`source_url`, `suggested_strength`, `notes`, `description`) are stored as `null` in JSON when empty or whitespace-only. This is handled by checking `string.IsNullOrWhiteSpace()` before assignment in TextChanged handlers.
 
-- **Newline Encoding**: The `active_triggers`, `all_triggers`, and `notes` fields support multiline text. Actual newlines (`Environment.NewLine`) are converted to `\n` for JSON storage and converted back for display. This ensures consistent serialization across different platforms.
+- **Newline Encoding**: The `active_triggers`, `all_triggers`, `notes`, and `description` fields support multiline text. Actual newlines (`Environment.NewLine`) are converted to `\n` for JSON storage and converted back for display. This ensures consistent serialization across different platforms.
 
 - **Gallery Management**: The gallery is stored as an array of filenames in the JSON. Image files are stored in a centralized folder (`lora-triggers-pictures`). When adding an image via drag and drop, the file is copied with a unique name format: `{safePath}_{timestamp}{extension}`, where `safePath` is the LoRA path with slashes replaced by underscores. The `LoadGallery()` method dynamically creates Border+Image controls and inserts them before the "Add Image" box. Clicking an image opens it using `Process.Start()` with `UseShellExecute = true`.
