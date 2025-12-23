@@ -28,6 +28,8 @@ namespace LoraDbEditor
         private Point _dragStartPoint;
         private TreeViewNode? _draggedNode;
         private TreeViewItem? _dragHoverItem;
+        private Border? _dragHoverBorder;
+        private Brush? _dragHoverOriginalBackground;
 
         public MainWindow()
         {
@@ -413,19 +415,55 @@ namespace LoraDbEditor
                 // Clear previous highlight
                 ClearDragHoverHighlight();
 
-                // Apply new highlight
+                // Store the TreeViewItem
                 _dragHoverItem = treeViewItem;
-                _dragHoverItem.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4A4A52")!);
+
+                // Find the Border in the TreeViewItem's visual tree (typically named "Bd")
+                var border = FindVisualChild<Border>(_dragHoverItem);
+                if (border != null)
+                {
+                    _dragHoverBorder = border;
+                    _dragHoverOriginalBackground = border.Background;
+
+                    // Apply highlight color (semi-transparent blue)
+                    var accentColor = (Color)ColorConverter.ConvertFromString("#007ACC")!;
+                    border.Background = new SolidColorBrush(Color.FromArgb(100, accentColor.R, accentColor.G, accentColor.B));
+                }
             }
         }
 
         private void ClearDragHoverHighlight()
         {
-            if (_dragHoverItem != null)
+            if (_dragHoverBorder != null && _dragHoverOriginalBackground != null)
             {
-                _dragHoverItem.Background = Brushes.Transparent;
-                _dragHoverItem = null;
+                _dragHoverBorder.Background = _dragHoverOriginalBackground;
+                _dragHoverBorder = null;
+                _dragHoverOriginalBackground = null;
             }
+            _dragHoverItem = null;
+        }
+
+        private T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null)
+                return null;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typedChild)
+                {
+                    return typedChild;
+                }
+
+                var result = FindVisualChild<T>(child);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+
+            return null;
         }
 
         private void MoveLoraToFolder(string sourcePath, string targetDirectory)
