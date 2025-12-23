@@ -1928,13 +1928,21 @@ namespace LoraDbEditor
             }
         }
 
-        private async Task DownloadAndAddLoraAsync(string url, string relativePath)
+        private async Task DownloadAndAddLoraAsync(string url, string folderPath)
         {
             var progressWindow = new DownloadProgressWindow();
             progressWindow.Owner = this;
 
             try
             {
+                // Extract filename from URL (will be improved after getting Content-Disposition header)
+                string filename = GetFilenameFromUrl(url);
+
+                // Build the relative path by combining folder and filename
+                string relativePath = string.IsNullOrEmpty(folderPath)
+                    ? filename
+                    : folderPath + "/" + filename;
+
                 // Build the full file path
                 string fullPath = System.IO.Path.Combine(_database.LorasBasePath, relativePath + ".safetensors");
 
@@ -1984,6 +1992,33 @@ namespace LoraDbEditor
                     using (var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
                     {
                         response.EnsureSuccessStatusCode();
+
+                        // Try to get filename from Content-Disposition header
+                        string? headerFilename = GetFilenameFromContentDisposition(response);
+                        if (!string.IsNullOrEmpty(headerFilename))
+                        {
+                            // Update filename from header
+                            filename = System.IO.Path.GetFileNameWithoutExtension(headerFilename);
+
+                            // Rebuild paths with the correct filename
+                            relativePath = string.IsNullOrEmpty(folderPath)
+                                ? filename
+                                : folderPath + "/" + filename;
+                            fullPath = System.IO.Path.Combine(_database.LorasBasePath, relativePath + ".safetensors");
+
+                            // Recheck if file exists with the new filename
+                            if (System.IO.File.Exists(fullPath))
+                            {
+                                progressWindow.Close();
+                                var result = MessageBox.Show($"File already exists at {relativePath}.safetensors. Overwrite?",
+                                    "File Exists", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                                if (result != MessageBoxResult.Yes)
+                                {
+                                    return;
+                                }
+                                progressWindow.Show();
+                            }
+                        }
 
                         var totalBytes = response.Content.Headers.ContentLength ?? 0;
 
@@ -2177,6 +2212,77 @@ namespace LoraDbEditor
             {
                 return null;
             }
+        }
+
+        private string GetFilenameFromUrl(string url)
+        {
+            try
+            {
+                var uri = new Uri(url);
+                var path = uri.AbsolutePath;
+
+                // Get the last segment of the path
+                var segments = path.Split('/');
+                var lastSegment = segments.LastOrDefault(s => !string.IsNullOrWhiteSpace(s));
+
+                if (!string.IsNullOrEmpty(lastSegment))
+                {
+                    // Remove extension if it's .safetensors
+                    if (lastSegment.EndsWith(".safetensors", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return System.IO.Path.GetFileNameWithoutExtension(lastSegment);
+                    }
+
+                    // Check if it looks like a filename (has an extension)
+                    if (lastSegment.Contains('.'))
+                    {
+                        return System.IO.Path.GetFileNameWithoutExtension(lastSegment);
+                    }
+
+                    // Use as-is
+                    return lastSegment;
+                }
+            }
+            catch
+            {
+                // Fall through to default
+            }
+
+            // Default fallback
+            return "downloaded-lora";
+        }
+
+        private string? GetFilenameFromContentDisposition(HttpResponseMessage response)
+        {
+            try
+            {
+                if (response.Content.Headers.ContentDisposition?.FileName != null)
+                {
+                    var filename = response.Content.Headers.ContentDisposition.FileName.Trim('"');
+                    return filename;
+                }
+
+                // Also check the raw header value
+                if (response.Content.Headers.TryGetValues("Content-Disposition", out var values))
+                {
+                    var header = values.FirstOrDefault();
+                    if (!string.IsNullOrEmpty(header))
+                    {
+                        // Parse filename from header like: attachment; filename="file.safetensors"
+                        var match = Regex.Match(header, @"filename[*]?=""?([^""]+)""?", RegexOptions.IgnoreCase);
+                        if (match.Success)
+                        {
+                            return match.Groups[1].Value;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Fall through
+            }
+
+            return null;
         }
     }
 }
