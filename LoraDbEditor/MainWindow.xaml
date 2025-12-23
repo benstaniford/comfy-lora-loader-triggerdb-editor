@@ -72,6 +72,7 @@
                          PreviewMouseLeftButtonDown="FileTreeView_PreviewMouseLeftButtonDown"
                          MouseMove="FileTreeView_MouseMove"
                          DragOver="FileTreeView_DragOver"
+                         DragLeave="FileTreeView_DragLeave"
                          Drop="FileTreeView_Drop">
                     <TreeView.ItemContainerStyle>
                         <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">

@@ -27,6 +27,7 @@ namespace LoraDbEditor
         private bool _isGitRepo = false;
         private Point _dragStartPoint;
         private TreeViewNode? _draggedNode;
+        private TreeViewItem? _dragHoverItem;
 
         public MainWindow()
         {
@@ -287,6 +288,7 @@ namespace LoraDbEditor
             if (!e.Data.GetDataPresent("TreeViewNode"))
             {
                 e.Effects = DragDropEffects.None;
+                ClearDragHoverHighlight();
                 return;
             }
 
@@ -294,38 +296,52 @@ namespace LoraDbEditor
             if (draggedNode == null || !draggedNode.IsFile)
             {
                 e.Effects = DragDropEffects.None;
+                ClearDragHoverHighlight();
                 return;
             }
 
             // Get the target node
             var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
-            
+
             if (targetNode == null)
             {
                 // Allow drop to root
                 e.Effects = DragDropEffects.Move;
+                ClearDragHoverHighlight();
             }
             else if (targetNode == draggedNode)
             {
                 // Can't drop on itself
                 e.Effects = DragDropEffects.None;
+                ClearDragHoverHighlight();
             }
             else if (!targetNode.IsFile)
             {
-                // Can drop on folders
+                // Can drop on folders - highlight the folder
                 e.Effects = DragDropEffects.Move;
+                HighlightDragTarget(targetNode);
             }
             else
             {
                 // Can't drop on other files
                 e.Effects = DragDropEffects.None;
+                ClearDragHoverHighlight();
             }
 
             e.Handled = true;
         }
 
+        private void FileTreeView_DragLeave(object sender, DragEventArgs e)
+        {
+            // Clear highlight when drag leaves the TreeView
+            ClearDragHoverHighlight();
+        }
+
         private void FileTreeView_Drop(object sender, DragEventArgs e)
         {
+            // Clear the drag hover highlight
+            ClearDragHoverHighlight();
+
             if (!e.Data.GetDataPresent("TreeViewNode"))
                 return;
 
@@ -366,6 +382,50 @@ namespace LoraDbEditor
             }
 
             return null;
+        }
+
+        private TreeViewItem? GetTreeViewItemAtPoint(Point point)
+        {
+            var hitTestResult = VisualTreeHelper.HitTest(FileTreeView, point);
+            if (hitTestResult == null)
+                return null;
+
+            var element = hitTestResult.VisualHit;
+            while (element != null && element != FileTreeView)
+            {
+                if (element is TreeViewItem tvi)
+                {
+                    return tvi;
+                }
+                element = VisualTreeHelper.GetParent(element);
+            }
+
+            return null;
+        }
+
+        private void HighlightDragTarget(TreeViewNode targetNode)
+        {
+            var treeViewItem = GetTreeViewItemAtPoint(Mouse.GetPosition(FileTreeView));
+
+            // Only highlight if it's a folder node and not already highlighted
+            if (treeViewItem != null && treeViewItem.DataContext == targetNode && treeViewItem != _dragHoverItem)
+            {
+                // Clear previous highlight
+                ClearDragHoverHighlight();
+
+                // Apply new highlight
+                _dragHoverItem = treeViewItem;
+                _dragHoverItem.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4A4A52")!);
+            }
+        }
+
+        private void ClearDragHoverHighlight()
+        {
+            if (_dragHoverItem != null)
+            {
+                _dragHoverItem.Background = Brushes.Transparent;
+                _dragHoverItem = null;
+            }
         }
 
         private void MoveLoraToFolder(string sourcePath, string targetDirectory)
