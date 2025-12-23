@@ -2133,7 +2133,8 @@ namespace LoraDbEditor
                                 : folderPath + "/" + filename;
                             fullPath = System.IO.Path.Combine(_database.LorasBasePath, relativePath + ".safetensors");
 
-                            progressWindow.UpdateStatus($"Downloading: {filename}.safetensors");
+                            progressWindow.UpdateStatus($"Downloading: {filename}.safetensors [from server]");
+                            System.Diagnostics.Debug.WriteLine($"Using server-provided filename: {filename}.safetensors");
 
                             // Recheck if file exists with the new filename
                             if (System.IO.File.Exists(fullPath))
@@ -2146,12 +2147,13 @@ namespace LoraDbEditor
                                     return;
                                 }
                                 progressWindow.Show();
-                                progressWindow.UpdateStatus($"Downloading: {filename}.safetensors");
+                                progressWindow.UpdateStatus($"Downloading: {filename}.safetensors [from server]");
                             }
                         }
                         else
                         {
-                            progressWindow.UpdateStatus($"Downloading: {filename}.safetensors (filename from URL)");
+                            progressWindow.UpdateStatus($"Downloading: {filename}.safetensors [from URL - no server filename]");
+                            System.Diagnostics.Debug.WriteLine($"WARNING: No Content-Disposition header found, using URL-based filename: {filename}.safetensors");
                         }
 
                         var totalBytes = response.Content.Headers.ContentLength ?? 0;
@@ -2403,54 +2405,113 @@ namespace LoraDbEditor
         {
             try
             {
-                // Check the ContentDisposition property first (this is the standard way)
-                if (response.Content.Headers.ContentDisposition?.FileName != null)
+                string? rawHeaderValue = null;
+
+                // FIRST: Try to get the raw header value from all possible locations
+                // Check response.Content.Headers first
+                if (response.Content.Headers.TryGetValues("Content-Disposition", out var contentHeaderValues))
                 {
-                    var filename = response.Content.Headers.ContentDisposition.FileName.Trim('"', ' ');
-                    if (!string.IsNullOrWhiteSpace(filename))
-                    {
-                        return filename;
-                    }
+                    rawHeaderValue = contentHeaderValues.FirstOrDefault();
+                    System.Diagnostics.Debug.WriteLine($"Found Content-Disposition in Content.Headers: {rawHeaderValue}");
+                }
+                // Then check response.Headers (some servers put it here instead)
+                else if (response.Headers.TryGetValues("Content-Disposition", out var responseHeaderValues))
+                {
+                    rawHeaderValue = responseHeaderValues.FirstOrDefault();
+                    System.Diagnostics.Debug.WriteLine($"Found Content-Disposition in Headers: {rawHeaderValue}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("No Content-Disposition header found in response");
                 }
 
-                // Check FileNameStar (RFC 5987 encoded filenames)
-                if (response.Content.Headers.ContentDisposition?.FileNameStar != null)
+                // If we found a raw header, parse it manually with multiple patterns
+                if (!string.IsNullOrEmpty(rawHeaderValue))
                 {
-                    var filename = response.Content.Headers.ContentDisposition.FileNameStar.Trim('"', ' ');
-                    if (!string.IsNullOrWhiteSpace(filename))
+                    // Pattern 1: filename*=UTF-8''encoded%20name.ext (RFC 5987)
+                    var match = Regex.Match(rawHeaderValue, @"filename\*\s*=\s*(?:UTF-8''|utf-8'')(.+?)(?:;|$)", RegexOptions.IgnoreCase);
+                    if (match.Success)
                     {
-                        return filename;
-                    }
-                }
-
-                // Fallback: manually parse the raw header
-                if (response.Headers.TryGetValues("Content-Disposition", out var headerValues) ||
-                    response.Content.Headers.TryGetValues("Content-Disposition", out headerValues))
-                {
-                    var header = headerValues.FirstOrDefault();
-                    if (!string.IsNullOrEmpty(header))
-                    {
-                        // Try multiple patterns
-                        // Pattern 1: filename*=UTF-8''encoded%20name.ext
-                        var match = Regex.Match(header, @"filename\*=(?:UTF-8'')?(.+?)(?:;|$)", RegexOptions.IgnoreCase);
-                        if (match.Success)
+                        var encoded = match.Groups[1].Value.Trim();
+                        try
                         {
-                            var encoded = match.Groups[1].Value;
-                            try
-                            {
-                                return Uri.UnescapeDataString(encoded).Trim('"', ' ');
-                            }
-                            catch { }
+                            var decoded = Uri.UnescapeDataString(encoded).Trim('"', ' ', '\'');
+                            System.Diagnostics.Debug.WriteLine($"Extracted filename from filename*= (encoded): {decoded}");
+                            if (!string.IsNullOrWhiteSpace(decoded))
+                                return decoded;
                         }
-
-                        // Pattern 2: filename="name.ext" or filename=name.ext
-                        match = Regex.Match(header, @"filename=""?([^"";]+)""?", RegexOptions.IgnoreCase);
-                        if (match.Success)
+                        catch (Exception ex)
                         {
-                            return match.Groups[1].Value.Trim('"', ' ');
+                            System.Diagnostics.Debug.WriteLine($"Failed to decode UTF-8 filename: {ex.Message}");
                         }
                     }
+
+                    // Pattern 2: filename="name with spaces.ext"
+                    match = Regex.Match(rawHeaderValue, @"filename\s*=\s*""([^""]+)""", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        var filename = match.Groups[1].Value.Trim();
+                        System.Diagnostics.Debug.WriteLine($"Extracted filename from filename=\"...\": {filename}");
+                        if (!string.IsNullOrWhiteSpace(filename))
+                            return filename;
+                    }
+
+                    // Pattern 3: filename='name with spaces.ext' (single quotes)
+                    match = Regex.Match(rawHeaderValue, @"filename\s*=\s*'([^']+)'", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        var filename = match.Groups[1].Value.Trim();
+                        System.Diagnostics.Debug.WriteLine($"Extracted filename from filename='...': {filename}");
+                        if (!string.IsNullOrWhiteSpace(filename))
+                            return filename;
+                    }
+
+                    // Pattern 4: filename=name.ext (no quotes)
+                    match = Regex.Match(rawHeaderValue, @"filename\s*=\s*([^;""\s]+)", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        var filename = match.Groups[1].Value.Trim();
+                        System.Diagnostics.Debug.WriteLine($"Extracted filename from filename=... (no quotes): {filename}");
+                        if (!string.IsNullOrWhiteSpace(filename))
+                            return filename;
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"Could not extract filename from header: {rawHeaderValue}");
                 }
+
+                // SECOND: Try the parsed ContentDisposition properties as fallback
+                if (response.Content.Headers.ContentDisposition != null)
+                {
+                    // Check FileName property
+                    if (!string.IsNullOrWhiteSpace(response.Content.Headers.ContentDisposition.FileName))
+                    {
+                        var filename = response.Content.Headers.ContentDisposition.FileName.Trim('"', ' ', '\'');
+                        System.Diagnostics.Debug.WriteLine($"Extracted filename from ContentDisposition.FileName: {filename}");
+                        if (!string.IsNullOrWhiteSpace(filename))
+                            return filename;
+                    }
+
+                    // Check FileNameStar property (RFC 5987)
+                    if (!string.IsNullOrWhiteSpace(response.Content.Headers.ContentDisposition.FileNameStar))
+                    {
+                        var filename = response.Content.Headers.ContentDisposition.FileNameStar.Trim('"', ' ', '\'');
+                        System.Diagnostics.Debug.WriteLine($"Extracted filename from ContentDisposition.FileNameStar: {filename}");
+                        if (!string.IsNullOrWhiteSpace(filename))
+                            return filename;
+                    }
+                }
+
+                // Log all response headers for debugging
+                System.Diagnostics.Debug.WriteLine("=== All Response Headers ===");
+                foreach (var header in response.Headers)
+                {
+                    System.Diagnostics.Debug.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
+                }
+                foreach (var header in response.Content.Headers)
+                {
+                    System.Diagnostics.Debug.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
+                }
+                System.Diagnostics.Debug.WriteLine("=== End Headers ===");
             }
             catch (Exception ex)
             {
