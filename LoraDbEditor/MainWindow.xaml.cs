@@ -48,6 +48,11 @@ namespace LoraDbEditor
             }
         }
 
+        private void UpdateStatus(string message)
+        {
+            StatusText.Text = message;
+        }
+
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             try
@@ -81,8 +86,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                StatusText.Text = "Error loading database.";
+                UpdateStatus($"Error loading: {ex.Message}");
             }
         }
 
@@ -475,7 +479,7 @@ namespace LoraDbEditor
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error processing dropped file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    UpdateStatus($"Error processing dropped file: {ex.Message}");
                 }
 
                 return;
@@ -514,7 +518,7 @@ namespace LoraDbEditor
 
                     if (string.IsNullOrWhiteSpace(url))
                     {
-                        MessageBox.Show("No valid URL found in dropped data.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        UpdateStatus("No valid URL found in dropped data.");
                         return;
                     }
 
@@ -523,7 +527,7 @@ namespace LoraDbEditor
                     // Validate URL
                     if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
                     {
-                        MessageBox.Show("Invalid URL format.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        UpdateStatus("Invalid URL format.");
                         return;
                     }
 
@@ -544,7 +548,7 @@ namespace LoraDbEditor
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error processing dropped URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    UpdateStatus($"Error processing dropped URL: {ex.Message}");
                 }
 
                 return;
@@ -693,8 +697,7 @@ namespace LoraDbEditor
             // Check if file exists
             if (!File.Exists(oldFullPath))
             {
-                MessageBox.Show("The file does not exist on disk.", "File Not Found", 
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus("The file does not exist on disk.");
                 return;
             }
 
@@ -714,8 +717,7 @@ namespace LoraDbEditor
             // Check if target already exists
             if (File.Exists(newFullPath))
             {
-                MessageBox.Show($"A file with the same name already exists in the target folder:\n{newPath}", 
-                    "File Exists", MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus($"A file with the same name already exists in the target folder: {newPath}");
                 return;
             }
 
@@ -771,8 +773,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error moving file: {ex.Message}", "Move Error", 
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error moving file: {ex.Message}");
             }
         }
 
@@ -917,8 +918,7 @@ namespace LoraDbEditor
             // Validate folder name
             if (string.IsNullOrWhiteSpace(folderName))
             {
-                MessageBox.Show("Folder name cannot be empty.", "Invalid Name", 
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus("Folder name cannot be empty.");
                 return;
             }
 
@@ -926,8 +926,7 @@ namespace LoraDbEditor
             var invalidChars = Path.GetInvalidFileNameChars();
             if (folderName.IndexOfAny(invalidChars) >= 0 || folderName.Contains("/") || folderName.Contains("\\"))
             {
-                MessageBox.Show("Folder name contains invalid characters.", "Invalid Name", 
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus("Folder name contains invalid characters.");
                 return;
             }
 
@@ -940,8 +939,7 @@ namespace LoraDbEditor
             // Check if folder already exists
             if (Directory.Exists(fullDiskPath))
             {
-                MessageBox.Show($"A folder already exists at: {folderPath}", "Folder Exists", 
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus($"A folder already exists at: {folderPath}");
                 return;
             }
 
@@ -958,14 +956,11 @@ namespace LoraDbEditor
                 // Try to select the new folder in the tree
                 SelectAndExpandPath(folderPath);
 
-                StatusText.Text = $"Created folder: {folderPath}";
-                MessageBox.Show($"Successfully created folder:\n\n{folderPath}", 
-                    "Folder Created", MessageBoxButton.OK, MessageBoxImage.Information);
+                UpdateStatus($"Successfully created folder: {folderPath}");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error creating folder: {ex.Message}", "Create Folder Error", 
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error creating folder: {ex.Message}");
             }
         }
 
@@ -1050,8 +1045,7 @@ namespace LoraDbEditor
         {
             if (FileTreeView.SelectedItem is not TreeViewNode node || !node.IsFile)
             {
-                MessageBox.Show("Please select a LoRA file to rename.", "No File Selected", 
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                UpdateStatus("Please select a LoRA file to rename.");
                 return;
             }
 
@@ -1061,8 +1055,7 @@ namespace LoraDbEditor
             // Check if file exists
             if (!File.Exists(oldFullPath))
             {
-                MessageBox.Show("The selected file does not exist on disk.", "File Not Found", 
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus("The selected file does not exist on disk.");
                 return;
             }
 
@@ -1164,8 +1157,7 @@ namespace LoraDbEditor
             // Validate new name
             if (string.IsNullOrWhiteSpace(newName))
             {
-                MessageBox.Show("Name cannot be empty.", "Invalid Name", 
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus("Name cannot be empty.");
                 return;
             }
 
@@ -1178,8 +1170,7 @@ namespace LoraDbEditor
             var invalidChars = Path.GetInvalidFileNameChars();
             if (newName.IndexOfAny(invalidChars) >= 0)
             {
-                MessageBox.Show("Name contains invalid characters.", "Invalid Name", 
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus("Name contains invalid characters.");
                 return;
             }
 
@@ -1190,8 +1181,7 @@ namespace LoraDbEditor
             // Check if target already exists
             if (File.Exists(newFullPath))
             {
-                MessageBox.Show($"A file already exists at: {newPath}", "File Exists", 
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdateStatus($"A file already exists at: {newPath}");
                 return;
             }
 
@@ -1236,14 +1226,11 @@ namespace LoraDbEditor
                 // Load the renamed entry
                 LoadLoraEntry(newPath);
 
-                StatusText.Text = $"Renamed {oldPath} to {newPath}. Don't forget to save!";
-                MessageBox.Show($"Successfully renamed:\n\nFrom: {oldPath}\nTo: {newPath}", 
-                    "Rename Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                UpdateStatus($"Successfully renamed from {oldPath} to {newPath}. Don't forget to save!");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error renaming file: {ex.Message}", "Rename Error", 
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error renaming file: {ex.Message}");
             }
         }
 
@@ -1302,8 +1289,7 @@ namespace LoraDbEditor
         {
             if (FileTreeView.SelectedItem is not TreeViewNode node || !node.IsFile)
             {
-                MessageBox.Show("Please select a LoRA file to delete.", "No File Selected",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                UpdateStatus("Please select a LoRA file to delete.");
                 return;
             }
 
@@ -1375,14 +1361,11 @@ namespace LoraDbEditor
                 BuildTreeView();
                 SearchComboBox.ItemsSource = _allFilePaths;
 
-                StatusText.Text = $"Deleted {loraPath}. Don't forget to save!";
-                MessageBox.Show($"Successfully deleted:\n\n{loraPath}",
-                    "Delete Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                UpdateStatus($"Successfully deleted {loraPath}. Don't forget to save!");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error deleting file: {ex.Message}", "Delete Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error deleting file: {ex.Message}");
             }
         }
 
@@ -1554,7 +1537,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading entry: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error loading entry: {ex.Message}");
             }
         }
 
@@ -1562,7 +1545,7 @@ namespace LoraDbEditor
         {
             if (_currentEntry == null || string.IsNullOrEmpty(_currentEntry.CalculatedFileId))
             {
-                MessageBox.Show("Cannot update file ID.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus("Cannot update file ID.");
                 return;
             }
 
@@ -1601,7 +1584,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error updating file ID: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error updating file ID: {ex.Message}");
             }
         }
 
@@ -1731,7 +1714,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error opening URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error opening URL: {ex.Message}");
             }
         }
 
@@ -1790,7 +1773,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error processing dropped URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error processing dropped URL: {ex.Message}");
             }
         }
 
@@ -1912,7 +1895,7 @@ namespace LoraDbEditor
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error opening image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    UpdateStatus($"Error opening image: {ex.Message}");
                 }
             }
         }
@@ -1993,7 +1976,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error adding image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error adding image: {ex.Message}");
             }
         }
 
@@ -2092,9 +2075,7 @@ namespace LoraDbEditor
                 // Load the new entry in the details panel
                 LoadLoraEntry(relativePath);
 
-                StatusText.Text = $"Successfully copied to: {fullPath}";
-                MessageBox.Show($"LoRA file copied successfully!\n\nPath: {relativePath}\nFull Path: {fullPath}\nFile ID: {fileId}",
-                    "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                UpdateStatus($"LoRA file copied successfully to {relativePath} (File ID: {fileId})");
 
                 // Update git button state after saving
                 if (_isGitAvailable && _isGitRepo)
@@ -2104,8 +2085,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error copying file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                StatusText.Text = "Error copying file.";
+                UpdateStatus($"Error copying file: {ex.Message}");
             }
         }
 
@@ -2213,7 +2193,7 @@ namespace LoraDbEditor
 
                 if (string.IsNullOrWhiteSpace(url))
                 {
-                    MessageBox.Show("No valid URL or file found in dropped data.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    UpdateStatus("No valid URL or file found in dropped data.");
                     return;
                 }
 
@@ -2222,7 +2202,7 @@ namespace LoraDbEditor
                 // Validate URL
                 if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
                 {
-                    MessageBox.Show("Invalid URL format.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    UpdateStatus("Invalid URL format.");
                     return;
                 }
 
@@ -2242,7 +2222,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error processing dropped data: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error processing dropped data: {ex.Message}");
             }
         }
 
@@ -2467,9 +2447,7 @@ namespace LoraDbEditor
 
                 progressWindow.Close();
 
-                StatusText.Text = $"Successfully downloaded to: {fullPath}";
-                MessageBox.Show($"LoRA file downloaded successfully!\n\nPath: {relativePath}\nFull Path: {fullPath}\nFile ID: {fileId}",
-                    "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                UpdateStatus($"LoRA file downloaded successfully to {relativePath} (File ID: {fileId})");
 
                 // Update git button state after saving
                 if (_isGitAvailable && _isGitRepo)
@@ -2480,7 +2458,7 @@ namespace LoraDbEditor
             catch (Exception ex)
             {
                 progressWindow.Close();
-                MessageBox.Show($"Error downloading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"Error downloading file: {ex.Message}");
             }
         }
 

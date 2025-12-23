@@ -57,14 +57,12 @@ namespace LoraDbEditor
                             }
                             catch { }
 
-                            MessageBox.Show("API key removed.", "Settings Saved",
-                                MessageBoxButton.OK, MessageBoxImage.Information);
+                            StatusTextBlock.Text = "API key removed.";
                         }
                         else
                         {
                             key.SetValue(ApiKeyValueName, apiKey);
-                            MessageBox.Show("API key saved successfully!", "Settings Saved",
-                                MessageBoxButton.OK, MessageBoxImage.Information);
+                            StatusTextBlock.Text = "API key saved successfully!";
                         }
 
                         DialogResult = true;
@@ -74,8 +72,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving settings: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusTextBlock.Text = $"Error saving settings: {ex.Message}";
             }
         }
 
