@@ -291,6 +291,7 @@ namespace LoraDbEditor
             {
                 e.Effects = DragDropEffects.None;
                 ClearDragHoverHighlight();
+                StatusText.Text = "DragOver: No TreeViewNode data";
                 return;
             }
 
@@ -299,6 +300,7 @@ namespace LoraDbEditor
             {
                 e.Effects = DragDropEffects.None;
                 ClearDragHoverHighlight();
+                StatusText.Text = "DragOver: Invalid dragged node";
                 return;
             }
 
@@ -310,24 +312,28 @@ namespace LoraDbEditor
                 // Allow drop to root
                 e.Effects = DragDropEffects.Move;
                 ClearDragHoverHighlight();
+                StatusText.Text = "DragOver: Root (null target)";
             }
             else if (targetNode == draggedNode)
             {
                 // Can't drop on itself
                 e.Effects = DragDropEffects.None;
                 ClearDragHoverHighlight();
+                StatusText.Text = $"DragOver: Can't drop on self ({targetNode.Name})";
             }
             else if (!targetNode.IsFile)
             {
                 // Can drop on folders - highlight the folder
                 e.Effects = DragDropEffects.Move;
-                HighlightDragTarget(targetNode);
+                StatusText.Text = $"DragOver: Folder target - {targetNode.Name}";
+                HighlightDragTarget(targetNode, e.GetPosition(FileTreeView));
             }
             else
             {
                 // Can't drop on other files
                 e.Effects = DragDropEffects.None;
                 ClearDragHoverHighlight();
+                StatusText.Text = $"DragOver: File target (not allowed) - {targetNode.Name}";
             }
 
             e.Handled = true;
@@ -405,41 +411,74 @@ namespace LoraDbEditor
             return null;
         }
 
-        private void HighlightDragTarget(TreeViewNode targetNode)
+        private void HighlightDragTarget(TreeViewNode targetNode, Point position)
         {
-            var treeViewItem = GetTreeViewItemAtPoint(Mouse.GetPosition(FileTreeView));
+            var treeViewItem = GetTreeViewItemAtPoint(position);
 
-            // Only highlight if it's a folder node and not already highlighted
-            if (treeViewItem != null && treeViewItem.DataContext == targetNode && treeViewItem != _dragHoverItem)
+            if (treeViewItem == null)
             {
-                // Clear previous highlight
-                ClearDragHoverHighlight();
+                StatusText.Text = $"Highlight: TreeViewItem is NULL for {targetNode.Name}";
+                return;
+            }
 
-                // Store the TreeViewItem
-                _dragHoverItem = treeViewItem;
+            if (treeViewItem.DataContext != targetNode)
+            {
+                StatusText.Text = $"Highlight: DataContext mismatch - TVI has {(treeViewItem.DataContext as TreeViewNode)?.Name ?? "null"}, expected {targetNode.Name}";
+                return;
+            }
 
-                // Find the Border in the TreeViewItem's visual tree (typically named "Bd")
-                var border = FindVisualChild<Border>(_dragHoverItem);
-                if (border != null)
-                {
-                    _dragHoverBorder = border;
-                    _dragHoverOriginalBackground = border.Background;
+            if (treeViewItem == _dragHoverItem)
+            {
+                // Already highlighted, no need to update
+                return;
+            }
 
-                    // Apply highlight color (semi-transparent blue)
-                    var accentColor = (Color)ColorConverter.ConvertFromString("#007ACC")!;
-                    border.Background = new SolidColorBrush(Color.FromArgb(100, accentColor.R, accentColor.G, accentColor.B));
-                }
+            // Clear previous highlight
+            ClearDragHoverHighlight();
+
+            // Store the TreeViewItem
+            _dragHoverItem = treeViewItem;
+
+            // Try multiple approaches to make the highlight visible
+
+            // Approach 1: Set TreeViewItem background directly with a bright, opaque color
+            var highlightColor = (Color)ColorConverter.ConvertFromString("#007ACC")!;
+            _dragHoverItem.Background = new SolidColorBrush(Color.FromArgb(180, highlightColor.R, highlightColor.G, highlightColor.B));
+            _dragHoverItem.BorderBrush = new SolidColorBrush(highlightColor);
+            _dragHoverItem.BorderThickness = new Thickness(2);
+
+            // Approach 2: Also try to find and highlight the Border in the visual tree
+            var border = FindVisualChild<Border>(_dragHoverItem);
+            if (border != null)
+            {
+                _dragHoverBorder = border;
+                _dragHoverOriginalBackground = border.Background;
+                border.Background = new SolidColorBrush(Color.FromArgb(180, highlightColor.R, highlightColor.G, highlightColor.B));
+                StatusText.Text = $"HIGHLIGHTED: {targetNode.Name} (Border found)";
+            }
+            else
+            {
+                StatusText.Text = $"HIGHLIGHTED: {targetNode.Name} (Border NOT found)";
             }
         }
 
         private void ClearDragHoverHighlight()
         {
+            if (_dragHoverItem != null)
+            {
+                // Restore TreeViewItem properties
+                _dragHoverItem.Background = Brushes.Transparent;
+                _dragHoverItem.BorderBrush = Brushes.Transparent;
+                _dragHoverItem.BorderThickness = new Thickness(0);
+            }
+
             if (_dragHoverBorder != null && _dragHoverOriginalBackground != null)
             {
                 _dragHoverBorder.Background = _dragHoverOriginalBackground;
                 _dragHoverBorder = null;
                 _dragHoverOriginalBackground = null;
             }
+
             _dragHoverItem = null;
         }
 
