@@ -2202,12 +2202,22 @@ namespace LoraDbEditor
                 _hasUnsavedChanges = true;
                 SaveButton.IsEnabled = true;
 
+                progressWindow.UpdateStatus("Saving database...");
+
+                // Auto-save the database
+                await _database.SaveAsync();
+                _hasUnsavedChanges = false;
+                SaveButton.IsEnabled = false;
+
                 progressWindow.UpdateStatus("Updating file list...");
 
                 // Refresh file list and tree view
                 _allFilePaths = _scanner.ScanForLoraFiles();
                 BuildTreeView();
                 SearchComboBox.ItemsSource = _allFilePaths;
+
+                // Select and expand the new file in the tree
+                SelectAndExpandPath(relativePath);
 
                 // Load the new entry in the details panel
                 LoadLoraEntry(relativePath);
@@ -2218,8 +2228,11 @@ namespace LoraDbEditor
                 MessageBox.Show($"LoRA file downloaded successfully!\n\nPath: {relativePath}\nFull Path: {fullPath}\nFile ID: {fileId}",
                     "Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                // Note: We don't update git button state here because the file hasn't been saved to the database yet
-                // The git button will be updated after the user clicks Save Database
+                // Update git button state after saving
+                if (_isGitAvailable && _isGitRepo)
+                {
+                    await UpdateCommitButtonStateAsync();
+                }
             }
             catch (Exception ex)
             {
