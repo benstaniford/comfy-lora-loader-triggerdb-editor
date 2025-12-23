@@ -2006,6 +2006,8 @@ namespace LoraDbEditor
                                 : folderPath + "/" + filename;
                             fullPath = System.IO.Path.Combine(_database.LorasBasePath, relativePath + ".safetensors");
 
+                            progressWindow.UpdateStatus($"Downloading: {filename}.safetensors");
+
                             // Recheck if file exists with the new filename
                             if (System.IO.File.Exists(fullPath))
                             {
@@ -2017,7 +2019,12 @@ namespace LoraDbEditor
                                     return;
                                 }
                                 progressWindow.Show();
+                                progressWindow.UpdateStatus($"Downloading: {filename}.safetensors");
                             }
+                        }
+                        else
+                        {
+                            progressWindow.UpdateStatus($"Downloading: {filename}.safetensors (filename from URL)");
                         }
 
                         var totalBytes = response.Content.Headers.ContentLength ?? 0;
@@ -2256,30 +2263,58 @@ namespace LoraDbEditor
         {
             try
             {
+                // Check the ContentDisposition property first (this is the standard way)
                 if (response.Content.Headers.ContentDisposition?.FileName != null)
                 {
-                    var filename = response.Content.Headers.ContentDisposition.FileName.Trim('"');
-                    return filename;
+                    var filename = response.Content.Headers.ContentDisposition.FileName.Trim('"', ' ');
+                    if (!string.IsNullOrWhiteSpace(filename))
+                    {
+                        return filename;
+                    }
                 }
 
-                // Also check the raw header value
-                if (response.Content.Headers.TryGetValues("Content-Disposition", out var values))
+                // Check FileNameStar (RFC 5987 encoded filenames)
+                if (response.Content.Headers.ContentDisposition?.FileNameStar != null)
                 {
-                    var header = values.FirstOrDefault();
+                    var filename = response.Content.Headers.ContentDisposition.FileNameStar.Trim('"', ' ');
+                    if (!string.IsNullOrWhiteSpace(filename))
+                    {
+                        return filename;
+                    }
+                }
+
+                // Fallback: manually parse the raw header
+                if (response.Headers.TryGetValues("Content-Disposition", out var headerValues) ||
+                    response.Content.Headers.TryGetValues("Content-Disposition", out headerValues))
+                {
+                    var header = headerValues.FirstOrDefault();
                     if (!string.IsNullOrEmpty(header))
                     {
-                        // Parse filename from header like: attachment; filename="file.safetensors"
-                        var match = Regex.Match(header, @"filename[*]?=""?([^""]+)""?", RegexOptions.IgnoreCase);
+                        // Try multiple patterns
+                        // Pattern 1: filename*=UTF-8''encoded%20name.ext
+                        var match = Regex.Match(header, @"filename\*=(?:UTF-8'')?(.+?)(?:;|$)", RegexOptions.IgnoreCase);
                         if (match.Success)
                         {
-                            return match.Groups[1].Value;
+                            var encoded = match.Groups[1].Value;
+                            try
+                            {
+                                return Uri.UnescapeDataString(encoded).Trim('"', ' ');
+                            }
+                            catch { }
+                        }
+
+                        // Pattern 2: filename="name.ext" or filename=name.ext
+                        match = Regex.Match(header, @"filename=""?([^"";]+)""?", RegexOptions.IgnoreCase);
+                        if (match.Success)
+                        {
+                            return match.Groups[1].Value.Trim('"', ' ');
                         }
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Fall through
+                System.Diagnostics.Debug.WriteLine($"Error parsing Content-Disposition: {ex.Message}");
             }
 
             return null;
