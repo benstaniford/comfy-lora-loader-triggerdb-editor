@@ -2055,6 +2055,53 @@ namespace LoraDbEditor
             }
         }
 
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsDialog = new SettingsDialog();
+            settingsDialog.Owner = this;
+            settingsDialog.ShowDialog();
+        }
+
+        private string ApplyCivitaiApiKey(string url)
+        {
+            try
+            {
+                // Check if this is a Civitai URL
+                var uri = new Uri(url);
+                if (uri.Host.Contains("civitai.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Get the API key from settings
+                    var apiKey = SettingsDialog.GetCivitaiApiKey();
+                    if (!string.IsNullOrWhiteSpace(apiKey))
+                    {
+                        // Check if URL already has the token parameter
+                        if (url.Contains("?token=", StringComparison.OrdinalIgnoreCase) ||
+                            url.Contains("&token=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            System.Diagnostics.Debug.WriteLine("URL already contains a token parameter");
+                            return url;
+                        }
+
+                        // Append the API key
+                        var separator = url.Contains('?') ? "&" : "?";
+                        var authenticatedUrl = $"{url}{separator}token={apiKey}";
+                        System.Diagnostics.Debug.WriteLine($"Applied Civitai API key to URL");
+                        return authenticatedUrl;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("No Civitai API key configured");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying API key: {ex.Message}");
+            }
+
+            return url;
+        }
+
         private async Task DownloadAndAddLoraAsync(string url, string folderPath)
         {
             var progressWindow = new DownloadProgressWindow();
@@ -2062,6 +2109,9 @@ namespace LoraDbEditor
 
             try
             {
+                // Apply Civitai API key if applicable
+                url = ApplyCivitaiApiKey(url);
+
                 // Extract filename from URL (will be improved after getting Content-Disposition header)
                 string filename = GetFilenameFromUrl(url);
 
