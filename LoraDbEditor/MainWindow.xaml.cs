@@ -300,7 +300,15 @@ namespace LoraDbEditor
             // Check if this is a file move
             bool isFileDrop = e.Data.GetDataPresent("TreeViewNode");
 
-            if (!isUrlDrop && !isFileDrop)
+            // Check if this is a local .safetensors file drop
+            bool isSafetensorsFileDrop = false;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                isSafetensorsFileDrop = files != null && files.Length > 0 && IsSafetensorsFile(files[0]);
+            }
+
+            if (!isUrlDrop && !isFileDrop && !isSafetensorsFileDrop)
             {
                 e.Effects = DragDropEffects.None;
                 ClearDragHoverHighlight();
@@ -356,23 +364,24 @@ namespace LoraDbEditor
                 return;
             }
 
-            // Handle URL drop (download)
-            if (isUrlDrop)
+            // Handle URL drop (download) or .safetensors file drop
+            if (isUrlDrop || isSafetensorsFileDrop)
             {
                 var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
+                string action = isSafetensorsFileDrop ? "copy file" : "download";
 
                 if (targetNode == null)
                 {
                     // Allow drop to root
                     e.Effects = DragDropEffects.Copy;
                     ClearDragHoverHighlight();
-                    StatusText.Text = "Drop URL here to download to root folder";
+                    StatusText.Text = $"Drop here to {action} to root folder";
                 }
                 else if (!targetNode.IsFile)
                 {
                     // Can drop on folders - highlight the folder
                     e.Effects = DragDropEffects.Copy;
-                    StatusText.Text = $"Drop URL here to download to: {targetNode.FullPath}";
+                    StatusText.Text = $"Drop here to {action} to: {targetNode.FullPath}";
                     HighlightDragTarget(targetNode, e.GetPosition(FileTreeView));
                 }
                 else
@@ -380,7 +389,7 @@ namespace LoraDbEditor
                     // Can't drop on files
                     e.Effects = DragDropEffects.None;
                     ClearDragHoverHighlight();
-                    StatusText.Text = "Cannot download to a file, drop on a folder instead";
+                    StatusText.Text = $"Cannot {action} to a file, drop on a folder instead";
                 }
 
                 e.Handled = true;
@@ -409,6 +418,14 @@ namespace LoraDbEditor
             // Check if this is a file move
             bool isFileDrop = e.Data.GetDataPresent("TreeViewNode");
 
+            // Check if this is a local .safetensors file drop
+            bool isSafetensorsFileDrop = false;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                isSafetensorsFileDrop = files != null && files.Length > 0 && IsSafetensorsFile(files[0]);
+            }
+
             // Handle file move
             if (isFileDrop && !isUrlDrop)
             {
@@ -430,6 +447,37 @@ namespace LoraDbEditor
                 MoveLoraToFolder(draggedNode.FullPath, targetDirectory);
 
                 e.Handled = true;
+                return;
+            }
+
+            // Handle local .safetensors file drop
+            if (isSafetensorsFileDrop)
+            {
+                try
+                {
+                    var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                    var sourceFile = files[0];
+
+                    // Get the target node
+                    var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
+
+                    // Determine target directory
+                    string targetFolder = "";
+                    if (targetNode != null && !targetNode.IsFile)
+                    {
+                        targetFolder = targetNode.FullPath;
+                    }
+
+                    // Copy the file to the target folder
+                    await CopyAndAddLoraAsync(sourceFile, targetFolder);
+
+                    e.Handled = true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error processing dropped file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
                 return;
             }
 
@@ -1956,6 +2004,111 @@ namespace LoraDbEditor
                    extension == ".bmp" || extension == ".gif" || extension == ".webp";
         }
 
+        private bool IsSafetensorsFile(string filePath)
+        {
+            var extension = System.IO.Path.GetExtension(filePath)?.ToLowerInvariant();
+            return extension == ".safetensors";
+        }
+
+        private async Task CopyAndAddLoraAsync(string sourceFile, string targetFolder)
+        {
+            try
+            {
+                StatusText.Text = "Copying file...";
+
+                // Get the filename without extension
+                var filename = System.IO.Path.GetFileNameWithoutExtension(sourceFile);
+
+                // Build the relative path by combining folder and filename
+                string relativePath = string.IsNullOrEmpty(targetFolder)
+                    ? filename
+                    : targetFolder + "/" + filename;
+
+                // Build the full file path
+                string fullPath = System.IO.Path.Combine(_database.LorasBasePath, relativePath + ".safetensors");
+
+                // Ensure directory exists
+                var directory = System.IO.Path.GetDirectoryName(fullPath);
+                if (directory != null && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // Check if file already exists
+                if (System.IO.File.Exists(fullPath))
+                {
+                    var result = MessageBox.Show($"File already exists at {relativePath}.safetensors. Overwrite?",
+                        "File Exists", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (result != MessageBoxResult.Yes)
+                    {
+                        StatusText.Text = "Copy cancelled.";
+                        return;
+                    }
+                }
+
+                // Copy the file
+                System.IO.File.Copy(sourceFile, fullPath, overwrite: true);
+
+                StatusText.Text = "Calculating file ID...";
+
+                // Calculate file ID
+                string fileId = FileIdCalculator.CalculateFileId(fullPath);
+
+                // Create new entry
+                var newEntry = new LoraEntry
+                {
+                    Path = relativePath,
+                    FullPath = fullPath,
+                    FileId = fileId,
+                    FileExists = true,
+                    CalculatedFileId = fileId,
+                    FileIdValid = true,
+                    ActiveTriggers = "",
+                    AllTriggers = ""
+                };
+
+                // Add to database
+                _database.AddEntry(relativePath, newEntry);
+                _hasUnsavedChanges = true;
+                SaveButton.IsEnabled = true;
+
+                StatusText.Text = "Saving database...";
+
+                // Auto-save the database
+                await _database.SaveAsync();
+                _hasUnsavedChanges = false;
+                SaveButton.IsEnabled = false;
+
+                StatusText.Text = "Updating file list...";
+
+                // Refresh file list and tree view
+                _allFilePaths = _scanner.ScanForLoraFiles();
+                BuildTreeView();
+                SearchComboBox.ItemsSource = _allFilePaths;
+
+                // Select and expand the new file in the tree
+                SelectAndExpandPath(relativePath);
+
+                // Load the new entry in the details panel
+                LoadLoraEntry(relativePath);
+
+                StatusText.Text = $"Successfully copied to: {fullPath}";
+                MessageBox.Show($"LoRA file copied successfully!\n\nPath: {relativePath}\nFull Path: {fullPath}\nFile ID: {fileId}",
+                    "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Update git button state after saving
+                if (_isGitAvailable && _isGitRepo)
+                {
+                    await UpdateCommitButtonStateAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error copying file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText.Text = "Error copying file.";
+            }
+        }
+
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             if (_hasUnsavedChanges)
@@ -1986,6 +2139,18 @@ namespace LoraDbEditor
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
             }
+            // Accept .safetensors files
+            else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0 && IsSafetensorsFile(files[0]))
+                {
+                    e.Effects = DragDropEffects.Copy;
+                    e.Handled = true;
+                    return;
+                }
+                e.Effects = DragDropEffects.None;
+            }
             else
             {
                 e.Effects = DragDropEffects.None;
@@ -1996,6 +2161,30 @@ namespace LoraDbEditor
         {
             try
             {
+                // Check if this is a file drop (local .safetensors file)
+                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                    if (files != null && files.Length > 0 && IsSafetensorsFile(files[0]))
+                    {
+                        var sourceFile = files[0];
+
+                        // Ask user where to save the file
+                        var folderDialog = new FolderSelectionDialog(_allFilePaths);
+                        if (folderDialog.ShowDialog() != true)
+                        {
+                            return; // User cancelled
+                        }
+
+                        string targetFolder = folderDialog.SelectedPath;
+                        await CopyAndAddLoraAsync(sourceFile, targetFolder);
+
+                        e.Handled = true;
+                        return;
+                    }
+                }
+
+                // Otherwise, handle as URL drop
                 string? url = null;
 
                 // Try to get URL from various data formats
@@ -2024,7 +2213,7 @@ namespace LoraDbEditor
 
                 if (string.IsNullOrWhiteSpace(url))
                 {
-                    MessageBox.Show("No valid URL found in dropped data.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("No valid URL or file found in dropped data.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
@@ -2053,7 +2242,7 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error processing dropped URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Error processing dropped data: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

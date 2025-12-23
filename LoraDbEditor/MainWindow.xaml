@@ -23,7 +23,7 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="150"/>
+            <RowDefinition Height="75"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -35,10 +35,10 @@
                 AllowDrop="True"
                 PreviewDragOver="AddLoraZone_PreviewDragOver"
                 Drop="AddLoraZone_Drop">
-            <TextBlock Text="Add Lora (Drag and Drop)"
+            <TextBlock Text="Add Lora (Drop file or download link)"
                       HorizontalAlignment="Center"
                       VerticalAlignment="Center"
-                      FontSize="24"
+                      FontSize="16"
                       FontWeight="Bold"
                       Foreground="{StaticResource TextBrush}"
                       Opacity="0.7"/>
