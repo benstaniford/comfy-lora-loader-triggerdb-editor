@@ -9,8 +9,8 @@
         <SolidColorBrush x:Key="BorderBrush" Color="#3F3F46"/>
         <SolidColorBrush x:Key="TextBrush" Color="#E0E0E0"/>
         <SolidColorBrush x:Key="AccentBrush" Color="#007ACC"/>
-        <SolidColorBrush x:Key="ErrorBrush" Color="#F44747"/>
-        <SolidColorBrush x:Key="SuccessBrush" Color="#4EC9B0"/>
+        <SolidColorBrush x:Key="ErrorBrush" Color="#CC3333"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#2ECC71"/>
         <SolidColorBrush x:Key="HoverBrush" Color="#3E3E42"/>
 
         <!-- Default Control Styles -->

@@ -1562,12 +1562,14 @@ namespace LoraDbEditor
             try
             {
                 StatusText.Text = "Saving database...";
+                StatusText.Foreground = (SolidColorBrush)FindResource("TextBrush");
                 SaveButton.IsEnabled = false;
 
                 await _database.SaveAsync();
 
                 _hasUnsavedChanges = false;
                 StatusText.Text = "Database saved successfully.";
+                StatusText.Foreground = (SolidColorBrush)FindResource("SuccessBrush");
 
                 // Check if there are git changes after saving
                 if (_isGitAvailable && _isGitRepo)
@@ -1577,8 +1579,8 @@ namespace LoraDbEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving database: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                StatusText.Text = "Error saving database.";
+                StatusText.Text = $"Error saving database: {ex.Message}";
+                StatusText.Foreground = (SolidColorBrush)FindResource("ErrorBrush");
                 SaveButton.IsEnabled = true;
             }
         }
@@ -2347,6 +2349,7 @@ namespace LoraDbEditor
             try
             {
                 StatusText.Text = "Committing to git...";
+                StatusText.Foreground = (SolidColorBrush)FindResource("TextBrush");
                 CommitButton.IsEnabled = false;
 
                 var dbDirectory = Path.GetDirectoryName(_database.DatabasePath)!;
@@ -2362,17 +2365,16 @@ namespace LoraDbEditor
                 // Commit with the specified message
                 await RunGitCommandAsync("commit -m \"Updated by Lora Db Editor\"", dbDirectory);
 
-                StatusText.Text = "Successfully committed to git.";
-                MessageBox.Show("Database and gallery images committed to git successfully!",
-                    "Git Commit", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusText.Text = "Database and gallery images committed to git successfully.";
+                StatusText.Foreground = (SolidColorBrush)FindResource("SuccessBrush");
 
                 // Update button state (should be disabled now since there are no changes)
                 await UpdateCommitButtonStateAsync();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error committing to git: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                StatusText.Text = "Error committing to git.";
+                StatusText.Text = $"Error committing to git: {ex.Message}";
+                StatusText.Foreground = (SolidColorBrush)FindResource("ErrorBrush");
                 await UpdateCommitButtonStateAsync();
             }
         }
