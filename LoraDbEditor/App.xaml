@@ -196,7 +196,7 @@
                                 <Setter TargetName="Border" Property="Background" Value="{StaticResource AccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="#3A3A3A"/>
+                                <Setter TargetName="ContentPresenter" Property="TextElement.Foreground" Value="#3A3A3A"/>
                                 <Setter TargetName="Border" Property="Background" Value="#252525"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
