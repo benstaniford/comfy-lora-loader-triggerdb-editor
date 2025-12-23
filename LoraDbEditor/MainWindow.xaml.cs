@@ -2170,13 +2170,13 @@ namespace LoraDbEditor
                         var sourceFile = files[0];
 
                         // Ask user where to save the file
-                        var folderDialog = new FolderSelectionDialog(_allFilePaths);
-                        if (folderDialog.ShowDialog() != true)
+                        var dialog = new FolderSelectionDialog(_allFilePaths);
+                        if (dialog.ShowDialog() != true)
                         {
                             return; // User cancelled
                         }
 
-                        string targetFolder = folderDialog.SelectedPath;
+                        string targetFolder = dialog.SelectedPath;
                         await CopyAndAddLoraAsync(sourceFile, targetFolder);
 
                         e.Handled = true;
