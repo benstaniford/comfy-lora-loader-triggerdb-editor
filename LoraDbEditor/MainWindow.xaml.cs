@@ -2045,8 +2045,8 @@ namespace LoraDbEditor
 
                 progressWindow.Close();
 
-                StatusText.Text = $"Successfully added {relativePath}. Don't forget to save!";
-                MessageBox.Show($"LoRA file downloaded successfully!\n\nPath: {relativePath}\nFile ID: {fileId}",
+                StatusText.Text = $"Successfully downloaded to: {fullPath}";
+                MessageBox.Show($"LoRA file downloaded successfully!\n\nPath: {relativePath}\nFull Path: {fullPath}\nFile ID: {fileId}",
                     "Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 // Note: We don't update git button state here because the file hasn't been saved to the database yet
