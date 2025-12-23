@@ -292,53 +292,99 @@ namespace LoraDbEditor
 
         private void FileTreeView_DragOver(object sender, DragEventArgs e)
         {
-            if (!e.Data.GetDataPresent("TreeViewNode"))
+            // Check if this is a URL drop (download)
+            bool isUrlDrop = e.Data.GetDataPresent(DataFormats.Text) ||
+                            e.Data.GetDataPresent(DataFormats.UnicodeText) ||
+                            e.Data.GetDataPresent(DataFormats.Html);
+
+            // Check if this is a file move
+            bool isFileDrop = e.Data.GetDataPresent("TreeViewNode");
+
+            if (!isUrlDrop && !isFileDrop)
             {
                 e.Effects = DragDropEffects.None;
                 ClearDragHoverHighlight();
-                StatusText.Text = "DragOver: No TreeViewNode data";
+                StatusText.Text = "DragOver: No valid data";
                 return;
             }
 
-            var draggedNode = e.Data.GetData("TreeViewNode") as TreeViewNode;
-            if (draggedNode == null || !draggedNode.IsFile)
+            // Handle file move
+            if (isFileDrop && !isUrlDrop)
             {
-                e.Effects = DragDropEffects.None;
-                ClearDragHoverHighlight();
-                StatusText.Text = "DragOver: Invalid dragged node";
+                var draggedNode = e.Data.GetData("TreeViewNode") as TreeViewNode;
+                if (draggedNode == null || !draggedNode.IsFile)
+                {
+                    e.Effects = DragDropEffects.None;
+                    ClearDragHoverHighlight();
+                    StatusText.Text = "DragOver: Invalid dragged node";
+                    return;
+                }
+
+                // Get the target node
+                var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
+
+                if (targetNode == null)
+                {
+                    // Allow drop to root
+                    e.Effects = DragDropEffects.Move;
+                    ClearDragHoverHighlight();
+                    StatusText.Text = "DragOver: Root (null target)";
+                }
+                else if (targetNode == draggedNode)
+                {
+                    // Can't drop on itself
+                    e.Effects = DragDropEffects.None;
+                    ClearDragHoverHighlight();
+                    StatusText.Text = $"DragOver: Can't drop on self ({targetNode.Name})";
+                }
+                else if (!targetNode.IsFile)
+                {
+                    // Can drop on folders - highlight the folder
+                    e.Effects = DragDropEffects.Move;
+                    StatusText.Text = $"DragOver: Folder target - {targetNode.Name}";
+                    HighlightDragTarget(targetNode, e.GetPosition(FileTreeView));
+                }
+                else
+                {
+                    // Can't drop on other files
+                    e.Effects = DragDropEffects.None;
+                    ClearDragHoverHighlight();
+                    StatusText.Text = $"DragOver: File target (not allowed) - {targetNode.Name}";
+                }
+
+                e.Handled = true;
                 return;
             }
 
-            // Get the target node
-            var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
+            // Handle URL drop (download)
+            if (isUrlDrop)
+            {
+                var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
 
-            if (targetNode == null)
-            {
-                // Allow drop to root
-                e.Effects = DragDropEffects.Move;
-                ClearDragHoverHighlight();
-                StatusText.Text = "DragOver: Root (null target)";
-            }
-            else if (targetNode == draggedNode)
-            {
-                // Can't drop on itself
-                e.Effects = DragDropEffects.None;
-                ClearDragHoverHighlight();
-                StatusText.Text = $"DragOver: Can't drop on self ({targetNode.Name})";
-            }
-            else if (!targetNode.IsFile)
-            {
-                // Can drop on folders - highlight the folder
-                e.Effects = DragDropEffects.Move;
-                StatusText.Text = $"DragOver: Folder target - {targetNode.Name}";
-                HighlightDragTarget(targetNode, e.GetPosition(FileTreeView));
-            }
-            else
-            {
-                // Can't drop on other files
-                e.Effects = DragDropEffects.None;
-                ClearDragHoverHighlight();
-                StatusText.Text = $"DragOver: File target (not allowed) - {targetNode.Name}";
+                if (targetNode == null)
+                {
+                    // Allow drop to root
+                    e.Effects = DragDropEffects.Copy;
+                    ClearDragHoverHighlight();
+                    StatusText.Text = "Drop URL here to download to root folder";
+                }
+                else if (!targetNode.IsFile)
+                {
+                    // Can drop on folders - highlight the folder
+                    e.Effects = DragDropEffects.Copy;
+                    StatusText.Text = $"Drop URL here to download to: {targetNode.FullPath}";
+                    HighlightDragTarget(targetNode, e.GetPosition(FileTreeView));
+                }
+                else
+                {
+                    // Can't drop on files
+                    e.Effects = DragDropEffects.None;
+                    ClearDragHoverHighlight();
+                    StatusText.Text = "Cannot download to a file, drop on a folder instead";
+                }
+
+                e.Handled = true;
+                return;
             }
 
             e.Handled = true;
@@ -350,30 +396,111 @@ namespace LoraDbEditor
             ClearDragHoverHighlight();
         }
 
-        private void FileTreeView_Drop(object sender, DragEventArgs e)
+        private async void FileTreeView_Drop(object sender, DragEventArgs e)
         {
             // Clear the drag hover highlight
             ClearDragHoverHighlight();
 
-            if (!e.Data.GetDataPresent("TreeViewNode"))
-                return;
+            // Check if this is a URL drop (download)
+            bool isUrlDrop = e.Data.GetDataPresent(DataFormats.Text) ||
+                            e.Data.GetDataPresent(DataFormats.UnicodeText) ||
+                            e.Data.GetDataPresent(DataFormats.Html);
 
-            var draggedNode = e.Data.GetData("TreeViewNode") as TreeViewNode;
-            if (draggedNode == null || !draggedNode.IsFile)
-                return;
+            // Check if this is a file move
+            bool isFileDrop = e.Data.GetDataPresent("TreeViewNode");
 
-            // Get the target node
-            var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
-
-            // Determine target directory
-            string targetDirectory = "";
-            if (targetNode != null && !targetNode.IsFile)
+            // Handle file move
+            if (isFileDrop && !isUrlDrop)
             {
-                targetDirectory = targetNode.FullPath;
+                var draggedNode = e.Data.GetData("TreeViewNode") as TreeViewNode;
+                if (draggedNode == null || !draggedNode.IsFile)
+                    return;
+
+                // Get the target node
+                var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
+
+                // Determine target directory
+                string targetDirectory = "";
+                if (targetNode != null && !targetNode.IsFile)
+                {
+                    targetDirectory = targetNode.FullPath;
+                }
+
+                // Perform the move
+                MoveLoraToFolder(draggedNode.FullPath, targetDirectory);
+
+                e.Handled = true;
+                return;
             }
 
-            // Perform the move
-            MoveLoraToFolder(draggedNode.FullPath, targetDirectory);
+            // Handle URL drop (download)
+            if (isUrlDrop)
+            {
+                try
+                {
+                    string? url = null;
+
+                    // Try to get URL from various data formats
+                    if (e.Data.GetDataPresent(DataFormats.Text))
+                    {
+                        url = e.Data.GetData(DataFormats.Text) as string;
+                    }
+                    else if (e.Data.GetDataPresent(DataFormats.UnicodeText))
+                    {
+                        url = e.Data.GetData(DataFormats.UnicodeText) as string;
+                    }
+                    else if (e.Data.GetDataPresent(DataFormats.Html))
+                    {
+                        // Extract URL from HTML content
+                        var html = e.Data.GetData(DataFormats.Html) as string;
+                        if (!string.IsNullOrEmpty(html))
+                        {
+                            // Simple extraction - look for href attribute
+                            var match = Regex.Match(html, @"href=""([^""]+)""");
+                            if (match.Success)
+                            {
+                                url = match.Groups[1].Value;
+                            }
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(url))
+                    {
+                        MessageBox.Show("No valid URL found in dropped data.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    url = url.Trim();
+
+                    // Validate URL
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                    {
+                        MessageBox.Show("Invalid URL format.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    // Get the target node
+                    var targetNode = GetTreeViewNodeAtPoint(e.GetPosition(FileTreeView));
+
+                    // Determine target directory
+                    string targetPath = "";
+                    if (targetNode != null && !targetNode.IsFile)
+                    {
+                        targetPath = targetNode.FullPath;
+                    }
+
+                    // Download the file to the target folder
+                    await DownloadAndAddLoraAsync(url, targetPath);
+
+                    e.Handled = true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error processing dropped URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
+                return;
+            }
 
             e.Handled = true;
         }
