@@ -869,7 +869,8 @@ namespace LoraDbEditor
                 Background = (SolidColorBrush)FindResource("SurfaceBrush"),
                 BorderBrush = (SolidColorBrush)FindResource("BorderBrush"),
                 Padding = new Thickness(5),
-                FontSize = 13
+                FontSize = 13,
+                MinWidth = 350
             };
             Grid.SetRow(textBox, 2);
             grid.Children.Add(textBox);
