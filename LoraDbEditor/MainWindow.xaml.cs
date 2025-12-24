@@ -870,7 +870,8 @@ namespace LoraDbEditor
                 BorderBrush = (SolidColorBrush)FindResource("BorderBrush"),
                 Padding = new Thickness(5),
                 FontSize = 13,
-                MinWidth = 350
+                Height = 32,
+                VerticalContentAlignment = VerticalAlignment.Center
             };
             Grid.SetRow(textBox, 2);
             grid.Children.Add(textBox);
