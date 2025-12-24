@@ -106,7 +106,9 @@ File IDs help ensure you're using the exact same LoRA file that your trigger wor
 
 - **Multiline Fields**: Active Triggers, All Triggers, and Notes support multiple lines - press Enter to add line breaks
 - **Browser Drag & Drop**: Drag URLs directly from your browser's address bar into the Source URL field
+- **CivitAI download**: Drag lora download links directly from CivitAI.com directly into folders in the navigation panel
 - **Bulk Updates**: You can update multiple LoRAs in one session - just switch between them and save once at the end
+- **Git integration**: If you manage your database folder with git, the app will detect this and allow you to commit changes for both the JSON file and the images.
 - **Backup**: Your database is just a JSON file - back it up regularly!
 - **Image Organization**: The app copies images to a central folder, so you can delete the originals after adding them
 
