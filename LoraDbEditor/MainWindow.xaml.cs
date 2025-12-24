@@ -2282,11 +2282,64 @@ namespace LoraDbEditor
             }
         }
 
-        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        private async void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             var settingsDialog = new SettingsDialog();
             settingsDialog.Owner = this;
-            settingsDialog.ShowDialog();
+
+            if (settingsDialog.ShowDialog() == true)
+            {
+                // Check if paths were changed
+                if (settingsDialog.PathsChanged)
+                {
+                    await ReloadAfterPathChange();
+                }
+            }
+        }
+
+        private async Task ReloadAfterPathChange()
+        {
+            try
+            {
+                // Clear current state
+                _currentLoraPath = null;
+                _hasUnsavedChanges = false;
+                SaveDatabaseButton.IsEnabled = false;
+
+                // Clear UI
+                DetailsPanel.Visibility = Visibility.Collapsed;
+                TreeView.ItemsSource = null;
+                SearchComboBox.ItemsSource = null;
+
+                // Recreate database and scanner with new paths
+                _database = new LoraDatabase();
+                _scanner = new FileSystemScanner(_database.LorasBasePath);
+
+                // Reload
+                StatusText.Text = "Loading database...";
+                await _database.LoadAsync();
+
+                StatusText.Text = "Scanning file system...";
+                _allFilePaths = _scanner.ScanForLoraFiles();
+
+                BuildTreeView();
+
+                SearchComboBox.ItemsSource = _allFilePaths;
+
+                // Re-setup fuzzy search
+                var textBox = (TextBox)SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox);
+                if (textBox != null)
+                {
+                    textBox.TextChanged -= SearchTextBox_TextChanged;
+                    textBox.TextChanged += SearchTextBox_TextChanged;
+                }
+
+                StatusText.Text = $"Reloaded. Found {_allFilePaths.Count} LoRA files, {_database.GetAllEntries().Count()} database entries.";
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error reloading after path change: {ex.Message}");
+            }
         }
 
         private string ApplyCivitaiApiKey(string url)

@@ -12,6 +12,11 @@ namespace LoraDbEditor
         private const string DatabasePathValueName = "DatabasePath";
         private const string LorasPathValueName = "LorasPath";
 
+        private string _originalDatabasePath = string.Empty;
+        private string _originalLorasPath = string.Empty;
+
+        public bool PathsChanged { get; private set; }
+
         public SettingsDialog()
         {
             InitializeComponent();
@@ -64,6 +69,10 @@ namespace LoraDbEditor
                         DatabasePathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers.json");
                         LorasPathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
                     }
+
+                    // Store original values to detect changes
+                    _originalDatabasePath = DatabasePathTextBox.Text;
+                    _originalLorasPath = LorasPathTextBox.Text;
                 }
             }
             catch (Exception ex)
@@ -109,6 +118,9 @@ namespace LoraDbEditor
                         {
                             key.SetValue(LorasPathValueName, lorasPath);
                         }
+
+                        // Check if paths changed
+                        PathsChanged = databasePath != _originalDatabasePath || lorasPath != _originalLorasPath;
 
                         StatusTextBlock.Text = "Settings saved successfully!";
                         DialogResult = true;
