@@ -1055,13 +1055,24 @@ namespace LoraDbEditor
 
         private async void RenameSelectedLora()
         {
-            if (FileTreeView.SelectedItem is not TreeViewNode node || !node.IsFile)
+            if (FileTreeView.SelectedItem is not TreeViewNode node)
             {
-                UpdateStatus("Please select a LoRA file to rename.");
+                UpdateStatus("Please select a LoRA file or folder to rename.");
                 return;
             }
 
-            var oldPath = node.FullPath;
+            if (node.IsFile)
+            {
+                await RenameSingleFile(node.FullPath);
+            }
+            else
+            {
+                await RenameFolder(node.FullPath);
+            }
+        }
+
+        private async Task RenameSingleFile(string oldPath)
+        {
             var oldFullPath = Path.Combine(_database.LorasBasePath, oldPath + ".safetensors");
 
             // Check if file exists
@@ -1079,8 +1090,8 @@ namespace LoraDbEditor
             var dialog = new Window
             {
                 Title = "Rename LoRA",
-                Width = 450,
-                Height = 180,
+                Width = 500,
+                Height = 220,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 Background = (SolidColorBrush)FindResource("BackgroundBrush"),
@@ -1108,8 +1119,10 @@ namespace LoraDbEditor
                 Foreground = (SolidColorBrush)FindResource("TextBrush"),
                 Background = (SolidColorBrush)FindResource("SurfaceBrush"),
                 BorderBrush = (SolidColorBrush)FindResource("BorderBrush"),
-                Padding = new Thickness(5),
-                FontSize = 13
+                Padding = new Thickness(8),
+                FontSize = 14,
+                Height = 40,
+                VerticalContentAlignment = VerticalAlignment.Center
             };
             Grid.SetRow(textBox, 1);
             grid.Children.Add(textBox);
@@ -1253,6 +1266,215 @@ namespace LoraDbEditor
             catch (Exception ex)
             {
                 UpdateStatus($"Error renaming file: {ex.Message}");
+            }
+        }
+
+        private async Task RenameFolder(string oldFolderPath)
+        {
+            var oldFullPath = Path.Combine(_database.LorasBasePath, oldFolderPath);
+
+            // Check if folder exists
+            if (!Directory.Exists(oldFullPath))
+            {
+                UpdateStatus("The selected folder does not exist on disk.");
+                return;
+            }
+
+            // Get current name
+            var currentName = Path.GetFileName(oldFolderPath);
+            var parentDirectory = Path.GetDirectoryName(oldFolderPath)?.Replace("\\", "/") ?? "";
+
+            // Show rename dialog
+            var dialog = new Window
+            {
+                Title = "Rename Folder",
+                Width = 500,
+                Height = 220,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = (SolidColorBrush)FindResource("BackgroundBrush"),
+                ResizeMode = ResizeMode.NoResize
+            };
+
+            var grid = new Grid { Margin = new Thickness(15) };
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var label = new TextBlock
+            {
+                Text = "New folder name:",
+                Foreground = (SolidColorBrush)FindResource("TextBrush"),
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            Grid.SetRow(label, 0);
+            grid.Children.Add(label);
+
+            var textBox = new TextBox
+            {
+                Text = currentName,
+                Foreground = (SolidColorBrush)FindResource("TextBrush"),
+                Background = (SolidColorBrush)FindResource("SurfaceBrush"),
+                BorderBrush = (SolidColorBrush)FindResource("BorderBrush"),
+                Padding = new Thickness(8),
+                FontSize = 14,
+                Height = 40,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            Grid.SetRow(textBox, 1);
+            grid.Children.Add(textBox);
+
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 15, 0, 0)
+            };
+            Grid.SetRow(buttonPanel, 3);
+
+            var okButton = new Button
+            {
+                Content = "OK",
+                Width = 80,
+                Height = 30,
+                Margin = new Thickness(0, 0, 10, 0),
+                IsDefault = true
+            };
+
+            var cancelButton = new Button
+            {
+                Content = "Cancel",
+                Width = 80,
+                Height = 30,
+                IsCancel = true
+            };
+
+            bool dialogResult = false;
+            okButton.Click += (s, e) =>
+            {
+                dialogResult = true;
+                dialog.Close();
+            };
+
+            cancelButton.Click += (s, e) =>
+            {
+                dialog.Close();
+            };
+
+            buttonPanel.Children.Add(okButton);
+            buttonPanel.Children.Add(cancelButton);
+            grid.Children.Add(buttonPanel);
+
+            dialog.Content = grid;
+            textBox.SelectAll();
+            textBox.Focus();
+
+            dialog.ShowDialog();
+
+            if (!dialogResult)
+                return;
+
+            var newName = textBox.Text.Trim();
+
+            // Validate new name
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                UpdateStatus("Folder name cannot be empty.");
+                return;
+            }
+
+            if (newName == currentName)
+            {
+                return; // No change
+            }
+
+            // Check for invalid characters
+            var invalidChars = Path.GetInvalidFileNameChars();
+            if (newName.IndexOfAny(invalidChars) >= 0)
+            {
+                UpdateStatus("Folder name contains invalid characters.");
+                return;
+            }
+
+            // Build new path
+            var newFolderPath = string.IsNullOrEmpty(parentDirectory) ? newName : parentDirectory + "/" + newName;
+            var newFullPath = Path.Combine(_database.LorasBasePath, newFolderPath);
+
+            // Check if target already exists
+            if (Directory.Exists(newFullPath))
+            {
+                UpdateStatus($"A folder already exists at: {newFolderPath}");
+                return;
+            }
+
+            try
+            {
+                // Rename the folder on disk
+                Directory.Move(oldFullPath, newFullPath);
+
+                // Find all files that were in this folder
+                var affectedFiles = _allFilePaths
+                    .Where(path => path.StartsWith(oldFolderPath + "/"))
+                    .ToList();
+
+                bool anyEntriesUpdated = false;
+
+                // Update all database entries for files in this folder
+                foreach (var oldPath in affectedFiles)
+                {
+                    var entry = _database.GetEntry(oldPath);
+                    if (entry != null)
+                    {
+                        // Calculate new path by replacing the old folder prefix
+                        var relativePath = oldPath.Substring(oldFolderPath.Length + 1);
+                        var newPath = newFolderPath + "/" + relativePath;
+                        var newFilePath = Path.Combine(_database.LorasBasePath, newPath + ".safetensors");
+
+                        // Remove old entry
+                        _database.RemoveEntry(oldPath);
+
+                        // Update entry paths
+                        entry.Path = newPath;
+                        entry.FullPath = newFilePath;
+
+                        // Add with new path
+                        _database.AddEntry(newPath, entry);
+
+                        // Update gallery image filenames if they exist
+                        if (entry.Gallery != null && entry.Gallery.Count > 0)
+                        {
+                            UpdateGalleryFilenames(oldPath, newPath, entry);
+                        }
+
+                        anyEntriesUpdated = true;
+                    }
+                }
+
+                // Auto-save the database
+                if (anyEntriesUpdated)
+                {
+                    await _database.SaveAsync();
+                    _hasUnsavedChanges = false;
+                    SaveButton.IsEnabled = false;
+
+                    // Update git button state after saving
+                    if (_isGitAvailable && _isGitRepo)
+                    {
+                        await UpdateCommitButtonStateAsync();
+                    }
+                }
+
+                // Refresh file list and tree view
+                _allFilePaths = _scanner.ScanForLoraFiles();
+                BuildTreeView();
+                SearchComboBox.ItemsSource = _allFilePaths;
+
+                UpdateStatus($"Successfully renamed folder from {oldFolderPath} to {newFolderPath} (affected {affectedFiles.Count} file(s)).");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error renaming folder: {ex.Message}");
             }
         }
 
