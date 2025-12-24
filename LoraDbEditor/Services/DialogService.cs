@@ -169,6 +169,7 @@ namespace LoraDbEditor.Services
         {
             var grid = new Grid { Margin = new Thickness(15) };
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -192,11 +193,26 @@ namespace LoraDbEditor.Services
                 Height = 40,
                 VerticalContentAlignment = VerticalAlignment.Center
             };
-            Grid.SetRow(textBox, 1);
+            Grid.SetRow(textBox, 2);
             grid.Children.Add(textBox);
 
+            var suggestButton = new Button
+            {
+                Content = "Suggest",
+                Width = 80,
+                Height = 30,
+                Margin = new Thickness(0, 10, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            suggestButton.Click += (s, e) =>
+            {
+                textBox.Text = textBox.Text.ToLower().Replace('_', '-');
+            };
+            Grid.SetRow(suggestButton, 1);
+            grid.Children.Add(suggestButton);
+
             var buttonPanel = CreateButtonPanel(dialog);
-            Grid.SetRow(buttonPanel, 2);
+            Grid.SetRow(buttonPanel, 3);
             grid.Children.Add(buttonPanel);
 
             return (grid, textBox);
