@@ -1309,13 +1309,26 @@ namespace LoraDbEditor
 
         private async void DeleteSelectedLora()
         {
-            if (FileTreeView.SelectedItem is not TreeViewNode node || !node.IsFile)
+            if (FileTreeView.SelectedItem is not TreeViewNode node)
             {
-                UpdateStatus("Please select a LoRA file to delete.");
+                UpdateStatus("Please select a LoRA file or folder to delete.");
                 return;
             }
 
-            var loraPath = node.FullPath;
+            if (node.IsFile)
+            {
+                // Delete single file
+                await DeleteSingleFile(node.FullPath);
+            }
+            else
+            {
+                // Delete folder and all its contents
+                await DeleteFolder(node.FullPath);
+            }
+        }
+
+        private async Task DeleteSingleFile(string loraPath)
+        {
             var fullPath = Path.Combine(_database.LorasBasePath, loraPath + ".safetensors");
 
             // Confirm deletion
@@ -1400,6 +1413,148 @@ namespace LoraDbEditor
             catch (Exception ex)
             {
                 UpdateStatus($"Error deleting file: {ex.Message}");
+            }
+        }
+
+        private async Task DeleteFolder(string folderPath)
+        {
+            // Find all files in this folder
+            var filesInFolder = _allFilePaths
+                .Where(path => path.StartsWith(folderPath + "/") || path == folderPath)
+                .ToList();
+
+            if (filesInFolder.Count == 0)
+            {
+                // Empty folder - just delete the directory
+                var folderFullPath = Path.Combine(_database.LorasBasePath, folderPath);
+                if (Directory.Exists(folderFullPath))
+                {
+                    var result = MessageBox.Show(
+                        $"Are you sure you want to delete this empty folder?\n\n{folderPath}\n\nThis action cannot be undone!",
+                        "Confirm Delete",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning);
+
+                    if (result != MessageBoxResult.Yes)
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        Directory.Delete(folderFullPath, true);
+
+                        // Refresh file list and tree view
+                        _allFilePaths = _scanner.ScanForLoraFiles();
+                        BuildTreeView();
+                        SearchComboBox.ItemsSource = _allFilePaths;
+
+                        UpdateStatus($"Successfully deleted folder {folderPath}.");
+                    }
+                    catch (Exception ex)
+                    {
+                        UpdateStatus($"Error deleting folder: {ex.Message}");
+                    }
+                }
+                return;
+            }
+
+            // Confirm deletion of folder with files
+            var confirmResult = MessageBox.Show(
+                $"Are you sure you want to delete this folder and all its contents?\n\n{folderPath}\n\nThis will delete:\n- {filesInFolder.Count} LoRA file(s)\n- All database entries\n- All associated gallery images\n- The folder itself\n\nThis action cannot be undone!",
+                "Confirm Delete Folder",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirmResult != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                bool anyEntriesDeleted = false;
+
+                // Delete all files in the folder
+                foreach (var loraPath in filesInFolder)
+                {
+                    var fullPath = Path.Combine(_database.LorasBasePath, loraPath + ".safetensors");
+
+                    // Get the database entry if it exists (to delete gallery images)
+                    var entry = _database.GetEntry(loraPath);
+
+                    // Delete gallery images if they exist
+                    if (entry?.Gallery != null && entry.Gallery.Count > 0)
+                    {
+                        foreach (var imageName in entry.Gallery)
+                        {
+                            try
+                            {
+                                var imagePath = Path.Combine(_galleryBasePath, imageName);
+                                if (File.Exists(imagePath))
+                                {
+                                    File.Delete(imagePath);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Failed to delete gallery image {imageName}: {ex.Message}");
+                            }
+                        }
+                    }
+
+                    // Delete the database entry if it exists
+                    if (entry != null)
+                    {
+                        _database.RemoveEntry(loraPath);
+                        anyEntriesDeleted = true;
+                    }
+
+                    // Delete the .safetensors file if it exists
+                    if (File.Exists(fullPath))
+                    {
+                        File.Delete(fullPath);
+                    }
+
+                    // Clear the details panel if this was the currently loaded entry
+                    if (_currentEntry?.Path == loraPath)
+                    {
+                        _currentEntry = null;
+                        DetailsPanel.Visibility = Visibility.Collapsed;
+                    }
+                }
+
+                // Delete the folder itself
+                var folderFullPath = Path.Combine(_database.LorasBasePath, folderPath);
+                if (Directory.Exists(folderFullPath))
+                {
+                    Directory.Delete(folderFullPath, true);
+                }
+
+                // Auto-save the database if any entries were deleted
+                if (anyEntriesDeleted)
+                {
+                    await _database.SaveAsync();
+                    _hasUnsavedChanges = false;
+                    SaveButton.IsEnabled = false;
+
+                    // Update git button state after saving
+                    if (_isGitAvailable && _isGitRepo)
+                    {
+                        await UpdateCommitButtonStateAsync();
+                    }
+                }
+
+                // Refresh file list and tree view
+                _allFilePaths = _scanner.ScanForLoraFiles();
+                BuildTreeView();
+                SearchComboBox.ItemsSource = _allFilePaths;
+
+                UpdateStatus($"Successfully deleted folder {folderPath} and {filesInFolder.Count} file(s).");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error deleting folder: {ex.Message}");
             }
         }
 
