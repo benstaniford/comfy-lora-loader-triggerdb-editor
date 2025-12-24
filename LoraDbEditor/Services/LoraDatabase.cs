@@ -12,9 +12,8 @@ namespace LoraDbEditor.Services
 
         public LoraDatabase()
         {
-            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            _databasePath = Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers.json");
-            _lorasBasePath = Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
+            _databasePath = SettingsDialog.GetDatabasePath();
+            _lorasBasePath = SettingsDialog.GetLorasPath();
         }
 
         public string DatabasePath => _databasePath;

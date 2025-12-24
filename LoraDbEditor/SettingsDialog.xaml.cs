@@ -8,6 +8,8 @@ namespace LoraDbEditor
     {
         private const string RegistryKeyPath = @"Software\LoraDbEditor";
         private const string ApiKeyValueName = "CivitaiApiKey";
+        private const string DatabasePathValueName = "DatabasePath";
+        private const string LorasPathValueName = "LorasPath";
 
         public SettingsDialog()
         {
@@ -27,8 +29,39 @@ namespace LoraDbEditor
                         if (!string.IsNullOrEmpty(apiKey))
                         {
                             ApiKeyTextBox.Text = apiKey;
-                            StatusTextBlock.Text = "API key loaded from registry";
+                            StatusTextBlock.Text = "Settings loaded from registry";
                         }
+
+                        var databasePath = key.GetValue(DatabasePathValueName) as string;
+                        if (!string.IsNullOrEmpty(databasePath))
+                        {
+                            DatabasePathTextBox.Text = databasePath;
+                        }
+                        else
+                        {
+                            // Set default path
+                            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                            DatabasePathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers.json");
+                        }
+
+                        var lorasPath = key.GetValue(LorasPathValueName) as string;
+                        if (!string.IsNullOrEmpty(lorasPath))
+                        {
+                            LorasPathTextBox.Text = lorasPath;
+                        }
+                        else
+                        {
+                            // Set default path
+                            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                            LorasPathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
+                        }
+                    }
+                    else
+                    {
+                        // No registry key yet, set defaults
+                        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                        DatabasePathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers.json");
+                        LorasPathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
                     }
                 }
             }
@@ -56,15 +89,27 @@ namespace LoraDbEditor
                                 key.DeleteValue(ApiKeyValueName, false);
                             }
                             catch { }
-
-                            StatusTextBlock.Text = "API key removed.";
                         }
                         else
                         {
                             key.SetValue(ApiKeyValueName, apiKey);
-                            StatusTextBlock.Text = "API key saved successfully!";
                         }
 
+                        // Save database path
+                        var databasePath = DatabasePathTextBox.Text.Trim();
+                        if (!string.IsNullOrEmpty(databasePath))
+                        {
+                            key.SetValue(DatabasePathValueName, databasePath);
+                        }
+
+                        // Save loras path
+                        var lorasPath = LorasPathTextBox.Text.Trim();
+                        if (!string.IsNullOrEmpty(lorasPath))
+                        {
+                            key.SetValue(LorasPathValueName, lorasPath);
+                        }
+
+                        StatusTextBlock.Text = "Settings saved successfully!";
                         DialogResult = true;
                         Close();
                     }
@@ -105,6 +150,58 @@ namespace LoraDbEditor
             }
 
             return null;
+        }
+
+        public static string GetDatabasePath()
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath))
+                {
+                    if (key != null)
+                    {
+                        var path = key.GetValue(DatabasePathValueName) as string;
+                        if (!string.IsNullOrEmpty(path))
+                        {
+                            return path;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors when reading
+            }
+
+            // Return default path
+            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers.json");
+        }
+
+        public static string GetLorasPath()
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath))
+                {
+                    if (key != null)
+                    {
+                        var path = key.GetValue(LorasPathValueName) as string;
+                        if (!string.IsNullOrEmpty(path))
+                        {
+                            return path;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors when reading
+            }
+
+            // Return default path
+            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
         }
     }
 }
