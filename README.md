@@ -20,25 +20,15 @@ This tool makes it easy to remember which trigger words to use with each LoRA an
 ### Requirements
 
 - Windows PC
-- [.NET 8.0 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (free download from Microsoft)
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI) with the [LoRA Loader with TriggerDB](https://github.com/benstaniford/comfy-lora-loader-with-triggerdb) node installed
 
-### Download
+### Download & Install
 
-1. Download the latest release from the [Releases page](../../releases)
-2. Extract the ZIP file to a folder on your computer
-3. Run `LoraDbEditor.exe`
+1. Download the latest Windows installer from the [Releases page](https://github.com/benstaniford/comfy-lora-loader-triggerdb-editor/releases)
+2. Run the installer
+3. Launch "LoRA DB Editor" from your Start Menu
 
-### Building from Source
-
-If you prefer to build from source:
-
-1. Install [Visual Studio 2022](https://visualstudio.microsoft.com/) or [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-2. Clone this repository
-3. Open `LoraDbEditor.sln` in Visual Studio and press F5, or run:
-```bash
-dotnet build LoraDbEditor.sln -c Release
-```
+The installer includes everything you need - no additional downloads required!
 
 ## Setup
 
