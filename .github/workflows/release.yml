@@ -80,7 +80,10 @@ jobs:
           Get-Content $wxsPath | Select-String "define ProductVersion"
 
       - name: Restore dependencies
-        run: dotnet restore LoraDbEditor/LoraDbEditor.csproj
+        run: dotnet restore LoraDbEditor.sln
+
+      - name: Run tests
+        run: dotnet test LoraDbEditor.sln -c Release --no-restore --verbosity normal
 
       - name: Build LoraDbEditor Application
         run: dotnet build LoraDbEditor/LoraDbEditor.csproj -c Release --no-restore
