@@ -70,11 +70,19 @@ namespace LoraDbEditor.Services
                 // Add all specified files
                 foreach (var path in paths)
                 {
-                    await RunGitCommandAsync($"add \"{path}\"", workingDirectory);
+                    var addResult = await RunGitCommandAsync($"add \"{path}\"", workingDirectory);
+                    if (addResult == null)
+                    {
+                        return false;
+                    }
                 }
 
                 // Commit with the specified message
-                await RunGitCommandAsync($"commit -m \"{message}\"", workingDirectory);
+                var commitResult = await RunGitCommandAsync($"commit -m \"{message}\"", workingDirectory);
+                if (commitResult == null)
+                {
+                    return false;
+                }
 
                 return true;
             }
