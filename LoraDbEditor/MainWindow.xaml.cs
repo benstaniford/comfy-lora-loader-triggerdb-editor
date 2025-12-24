@@ -825,8 +825,8 @@ namespace LoraDbEditor
             var dialog = new Window
             {
                 Title = "Create New Folder",
-                Width = 450,
-                Height = 180,
+                Width = 500,
+                Height = 220,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 Background = (SolidColorBrush)FindResource("BackgroundBrush"),
@@ -868,9 +868,9 @@ namespace LoraDbEditor
                 Foreground = (SolidColorBrush)FindResource("TextBrush"),
                 Background = (SolidColorBrush)FindResource("SurfaceBrush"),
                 BorderBrush = (SolidColorBrush)FindResource("BorderBrush"),
-                Padding = new Thickness(5),
-                FontSize = 13,
-                Height = 32,
+                Padding = new Thickness(8),
+                FontSize = 14,
+                Height = 40,
                 VerticalContentAlignment = VerticalAlignment.Center
             };
             Grid.SetRow(textBox, 2);
