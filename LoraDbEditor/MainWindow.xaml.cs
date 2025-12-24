@@ -2301,44 +2301,23 @@ namespace LoraDbEditor
         {
             try
             {
-                // Clear current state
-                _currentLoraPath = null;
-                _hasUnsavedChanges = false;
-                SaveDatabaseButton.IsEnabled = false;
+                // Show message and restart application
+                var result = MessageBox.Show(
+                    "The application needs to restart to apply the new paths. Any unsaved changes will be lost. Restart now?",
+                    "Restart Required",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
 
-                // Clear UI
-                DetailsPanel.Visibility = Visibility.Collapsed;
-                TreeView.ItemsSource = null;
-                SearchComboBox.ItemsSource = null;
-
-                // Recreate database and scanner with new paths
-                _database = new LoraDatabase();
-                _scanner = new FileSystemScanner(_database.LorasBasePath);
-
-                // Reload
-                StatusText.Text = "Loading database...";
-                await _database.LoadAsync();
-
-                StatusText.Text = "Scanning file system...";
-                _allFilePaths = _scanner.ScanForLoraFiles();
-
-                BuildTreeView();
-
-                SearchComboBox.ItemsSource = _allFilePaths;
-
-                // Re-setup fuzzy search
-                var textBox = (TextBox)SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox);
-                if (textBox != null)
+                if (result == MessageBoxResult.Yes)
                 {
-                    textBox.TextChanged -= SearchTextBox_TextChanged;
-                    textBox.TextChanged += SearchTextBox_TextChanged;
+                    // Restart the application
+                    System.Diagnostics.Process.Start(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
+                    Application.Current.Shutdown();
                 }
-
-                StatusText.Text = $"Reloaded. Found {_allFilePaths.Count} LoRA files, {_database.GetAllEntries().Count()} database entries.";
             }
             catch (Exception ex)
             {
-                UpdateStatus($"Error reloading after path change: {ex.Message}");
+                UpdateStatus($"Error restarting application: {ex.Message}");
             }
         }
 
