@@ -19,6 +19,7 @@ namespace LoraDbEditor.Services
         {
             var dialog = CreateDialog(owner, "Rename LoRA", 500, 220);
             var (grid, textBox) = CreateInputDialog(
+                dialog,
                 "New name (without .safetensors extension):",
                 currentName
             );
@@ -41,6 +42,7 @@ namespace LoraDbEditor.Services
         {
             var dialog = CreateDialog(owner, "Rename Folder", 500, 220);
             var (grid, textBox) = CreateInputDialog(
+                dialog,
                 "New folder name:",
                 currentName
             );
@@ -163,7 +165,7 @@ namespace LoraDbEditor.Services
             };
         }
 
-        private (Grid grid, TextBox textBox) CreateInputDialog(string labelText, string initialValue)
+        private (Grid grid, TextBox textBox) CreateInputDialog(Window dialog, string labelText, string initialValue)
         {
             var grid = new Grid { Margin = new Thickness(15) };
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -193,7 +195,7 @@ namespace LoraDbEditor.Services
             Grid.SetRow(textBox, 1);
             grid.Children.Add(textBox);
 
-            var buttonPanel = CreateButtonPanel((Window)null!);
+            var buttonPanel = CreateButtonPanel(dialog);
             Grid.SetRow(buttonPanel, 2);
             grid.Children.Add(buttonPanel);
 
