@@ -36,9 +36,8 @@ The application automatically looks for your ComfyUI files in these locations:
 
 - **LoRA Files**: `%USERPROFILE%\Documents\ComfyUI\models\loras\`
 - **Database**: `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers.json`
-- **Gallery Images**: `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers-pictures\`
 
-If you're using a custom ComfyUI installation path, you'll need to ensure these folders exist at the locations above, or the database file will need to be in the standard location.
+If you're using a custom ComfyUI installation path, you'll need to alter these paths in the settings dialog.
 
 ## How to Use
 
