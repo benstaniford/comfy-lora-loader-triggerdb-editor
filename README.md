@@ -94,7 +94,7 @@ Any additional information about using the LoRA - compatibility notes, tips, spe
 
 ### File ID Warnings
 
-The app validates that your LoRA files haven't been corrupted or modified:
+The app and comfy can keep track of your loras if they are moved/renamed by their file-id (A partial hash of the file).  It also validates that your LoRA files haven't been corrupted or modified:
 
 - ✅ **No Warning** - File is valid
 - 🟧 **Orange Warning** - File ID hasn't been calculated yet (click "Update File ID")
