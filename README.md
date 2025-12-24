@@ -1,140 +1,161 @@
 # LoRA DB Editor
 
-A WPF application for managing LoRA safetensor files and their trigger database for ComfyUI.
+A desktop application for managing your ComfyUI LoRA collection and trigger word database. Designed to work seamlessly with the [LoRA Loader with TriggerDB](https://github.com/benstaniford/comfy-lora-loader-with-triggerdb) custom node.
 
-## Features
+## What It Does
 
-- **Dark-themed UI** - Modern dark interface for comfortable viewing
-- **Fuzzy Search** - Quickly find LoRA files by typing partial names
-- **Tree Navigation** - Browse LoRA files in a hierarchical folder structure
-- **File ID Validation** - Automatically validates file IDs against actual file contents
-- **File ID Updates** - One-click update for missing or incorrect file IDs
-- **Real-time Warnings** - Visual indicators for missing files or ID mismatches
+LoRA DB Editor helps you organize and manage your LoRA files by:
 
-## Requirements
+- 📝 Managing trigger words and activation phrases for each LoRA
+- 🖼️ Creating visual galleries of example images for each LoRA
+- 🔗 Tracking where you downloaded each LoRA from
+- 📊 Maintaining recommended strength settings
+- 🔍 Quickly finding LoRAs with fuzzy search
+- ✅ Validating file integrity with automatic ID checking
 
-- Windows OS
-- .NET 8.0 SDK
-- Visual Studio 2022 (recommended)
+This tool makes it easy to remember which trigger words to use with each LoRA and see visual examples of what they produce.
 
-## Building the Application
+## Installation
 
-1. Open `LoraDbEditor.sln` in Visual Studio 2022
-2. Build the solution (Ctrl+Shift+B)
-3. Run the application (F5)
+### Requirements
 
-Alternatively, build from command line:
+- Windows PC
+- [.NET 8.0 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (free download from Microsoft)
+- [ComfyUI](https://github.com/comfyanonymous/ComfyUI) with the [LoRA Loader with TriggerDB](https://github.com/benstaniford/comfy-lora-loader-with-triggerdb) node installed
+
+### Download
+
+1. Download the latest release from the [Releases page](../../releases)
+2. Extract the ZIP file to a folder on your computer
+3. Run `LoraDbEditor.exe`
+
+### Building from Source
+
+If you prefer to build from source:
+
+1. Install [Visual Studio 2022](https://visualstudio.microsoft.com/) or [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+2. Clone this repository
+3. Open `LoraDbEditor.sln` in Visual Studio and press F5, or run:
 ```bash
-dotnet build LoraDbEditor.sln
-dotnet run --project LoraDbEditor/LoraDbEditor.csproj
+dotnet build LoraDbEditor.sln -c Release
 ```
 
-## File Locations
+## Setup
 
-The application expects files in these locations:
+The application automatically looks for your ComfyUI files in these locations:
 
-- **Database**: `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers.json`
 - **LoRA Files**: `%USERPROFILE%\Documents\ComfyUI\models\loras\`
+- **Database**: `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers.json`
+- **Gallery Images**: `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers-pictures\`
 
-## Usage
+If you're using a custom ComfyUI installation path, you'll need to ensure these folders exist at the locations above, or the database file will need to be in the standard location.
 
-### Searching for Files
+## How to Use
 
-1. Type in the search box at the top
-2. The combo box will fuzzy-match file paths as you type
-3. Select a file from the dropdown to view its details
+### Finding Your LoRAs
 
-### Tree Navigation
+There are two ways to browse your collection:
 
-1. Expand folders in the left panel
-2. Click on any `.safetensors` file to view its details
+**Quick Search** (Top of window)
+- Type any part of a LoRA name
+- The search uses "fuzzy matching" - you don't need to type the exact name
+- Example: typing "fan" will find "80sFantasyMovieChroma"
+- Select from the dropdown to open that LoRA
 
-### Viewing and Editing Details
+**Folder Tree** (Left panel)
+- Browse your LoRAs organized by folder
+- Expand folders to see what's inside
+- Click any `.safetensors` file to view its details
 
-Once a file is selected, the right panel shows editable fields:
+### Managing a LoRA
 
-- **File Path** - The relative path used as the database key
-- **File ID** - SHA1 hash identifier for the file
-- **Active Triggers** - Currently active trigger words (editable, supports multiline)
-- **All Triggers** - Complete list of trigger words with descriptions (editable, supports multiline)
-- **Source URL** - Optional URL where the LoRA was downloaded from (supports drag and drop from browser)
-- **Suggested Strength** - Optional recommended strength value
-- **Notes** - Optional notes about the LoRA (editable, supports multiline)
-- **Gallery** - Image gallery showing example outputs (drag and drop images to add, click to view full size)
+When you select a LoRA, the right panel shows all its information:
 
-All editable fields automatically save changes when you click "Save Database".
+#### Description
+A brief description of what the LoRA does or its style.
 
-### Managing Gallery Images
+#### Active Triggers
+The main trigger words you need to use in your prompts. These are the words shown in the ComfyUI node dropdown.
 
-The Gallery section displays 256x256 thumbnails of example images:
-- **View Images**: Click any thumbnail to open it in your default image viewer
-- **Add Images**: Drag and drop image files onto the "Add Image" box
+#### All Triggers
+The complete list of trigger words, including variations and recommended settings. This is your reference guide.
+
+#### Gallery
+Visual examples of what the LoRA produces:
+- **Add Images**: Drag and drop images from anywhere (including from ComfyUI output folders!)
+- **View Images**: Click any thumbnail to open it full-size
 - **Supported Formats**: JPG, PNG, BMP, GIF, WEBP
-- **Storage**: Images are stored in `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers-pictures\`
 
-### File ID Validation
+#### Source URL
+Where you downloaded the LoRA from (Civitai, HuggingFace, etc.)
+- Type the URL or drag and drop it from your browser address bar
 
-The application automatically validates file IDs:
+#### Suggested Strength
+The recommended strength value (e.g., "0.8-1.2" or "1.0")
 
-- **Red Warning** - File not found or ID mismatch
-- **Orange Warning** - File ID missing or set to "unknown"
-- **No Warning** - File ID is correct
+#### Notes
+Any additional information about using the LoRA - compatibility notes, tips, special instructions, etc.
 
-Click "Update File ID" to fix missing or incorrect IDs.
+### Saving Your Changes
 
-### Saving Changes
+1. Edit any fields you want to update
+2. The "Save Database" button will become active
+3. Click "Save Database" to save all changes
+4. Your changes will automatically appear in the ComfyUI node
 
-1. After updating file IDs, the "Save Database" button becomes enabled
-2. Click "Save Database" to write changes to `lora-triggers.json`
-3. The application will prompt you to save if you try to close with unsaved changes
+### File ID Warnings
 
-## File ID Algorithm
+The app validates that your LoRA files haven't been corrupted or modified:
 
-File IDs are calculated using SHA1 hash of:
-1. File size (as string)
-2. First 1MB of file
-3. Last 1MB of file (if file > 1MB)
+- ✅ **No Warning** - File is valid
+- 🟧 **Orange Warning** - File ID hasn't been calculated yet (click "Update File ID")
+- 🟥 **Red Warning** - File is missing or has been modified (may need to re-download)
 
-This provides fast hashing of large files while maintaining uniqueness.
+File IDs help ensure you're using the exact same LoRA file that your trigger words were designed for.
 
-## Architecture
+## Tips & Tricks
 
-### Models
-- **LoraEntry** - Represents a LoRA file entry with triggers and file ID
-- **TreeViewNode** - Hierarchical node for tree view display
+- **Multiline Fields**: Active Triggers, All Triggers, and Notes support multiple lines - press Enter to add line breaks
+- **Browser Drag & Drop**: Drag URLs directly from your browser's address bar into the Source URL field
+- **Bulk Updates**: You can update multiple LoRAs in one session - just switch between them and save once at the end
+- **Backup**: Your database is just a JSON file - back it up regularly!
+- **Image Organization**: The app copies images to a central folder, so you can delete the originals after adding them
 
-### Services
-- **FileIdCalculator** - Computes SHA1 file IDs
-- **LoraDatabase** - Manages JSON database read/write operations
-- **FileSystemScanner** - Scans filesystem and implements fuzzy search
+## Workflow Integration
 
-### UI
-- **MainWindow** - Main application window with search, tree, and details panels
-- **App** - Application entry point with dark theme resources
+This editor works hand-in-hand with the [LoRA Loader with TriggerDB](https://github.com/benstaniford/comfy-lora-loader-with-triggerdb) ComfyUI node:
 
-## JSON Format
+1. **Download** a new LoRA and save it to your `models/loras/` folder
+2. **Open** LoRA DB Editor and find your new LoRA
+3. **Add** trigger words from the LoRA's documentation
+4. **Create** a gallery by generating test images in ComfyUI and dragging them into the editor
+5. **Save** your changes
+6. **Refresh** the TriggerDB node in ComfyUI to see your new LoRA with all its triggers!
 
-The database uses JSON with newlines encoded as `\n`:
+## Troubleshooting
 
-```json
-{
-  "path/to/lora": {
-    "active_triggers": "trigger1\ntrigger2",
-    "all_triggers": "trigger1, trigger2\nRecommended Strength: 1.0",
-    "file_id": "abc123...",
-    "source_url": "https://civitai.com/models/12345",
-    "suggested_strength": "0.8-1.2",
-    "notes": "Works well with landscapes\nBest at 1024x1024",
-    "gallery": [
-      "path_to_lora_20231201120000.png",
-      "path_to_lora_20231201120030.jpg"
-    ]
-  }
-}
-```
+**"File not found" warnings for files that exist**
+- Make sure your LoRAs are in `%USERPROFILE%\Documents\ComfyUI\models\loras\`
+- Check that the file has the `.safetensors` extension
 
-**Notes:**
-- The path keys do NOT include the `.safetensors` extension
-- `source_url`, `suggested_strength`, `notes`, and `gallery` are optional fields
-- Newlines in `active_triggers`, `all_triggers`, and `notes` are encoded as `\n`
-- Gallery contains filenames (not full paths) of images stored in the pictures folder
+**Changes don't appear in ComfyUI**
+- Make sure you clicked "Save Database" in the editor
+- Refresh or reload your workflow in ComfyUI
+
+**Images won't add to gallery**
+- Check the file format (JPG, PNG, BMP, GIF, WEBP supported)
+- Make sure you're dragging onto the "Add Image" box
+
+**App won't start**
+- Install the [.NET 8.0 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+- Check that you're running Windows
+
+## Support & Contributions
+
+- **Issues**: Report bugs or request features in the [Issues](../../issues) section
+- **Contributions**: Pull requests are welcome!
+- **ComfyUI Node**: For issues with the ComfyUI integration, visit the [LoRA Loader with TriggerDB](https://github.com/benstaniford/comfy-lora-loader-with-triggerdb) repository
+
+## License
+
+See [LICENSE](LICENSE) file for details.
