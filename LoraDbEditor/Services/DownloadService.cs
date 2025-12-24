@@ -226,6 +226,12 @@ namespace LoraDbEditor.Services
                 var uri = new Uri(url);
                 var path = uri.AbsolutePath;
 
+                // If the path ends with a slash, it's a directory, not a file
+                if (path.EndsWith('/'))
+                {
+                    return "downloaded-lora";
+                }
+
                 // Get the last segment of the path
                 var segments = path.Split('/');
                 var lastSegment = segments.LastOrDefault(s => !string.IsNullOrWhiteSpace(s));
