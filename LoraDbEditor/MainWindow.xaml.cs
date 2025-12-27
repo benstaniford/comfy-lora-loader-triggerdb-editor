@@ -464,6 +464,14 @@ namespace LoraDbEditor
                 return;
             }
 
+            // Capture parent path before deletion to maintain tree navigation
+            string? parentPath = null;
+            int lastSlashIndex = loraPath.LastIndexOf('/');
+            if (lastSlashIndex > 0)
+            {
+                parentPath = loraPath.Substring(0, lastSlashIndex);
+            }
+
             var result = await _fileOperations.DeleteSingleFileAsync(loraPath, _database, _galleryBasePath);
 
             if (result.Success)
@@ -475,7 +483,7 @@ namespace LoraDbEditor
                     DetailsPanel.Visibility = Visibility.Collapsed;
                 }
 
-                await RefreshAfterFileOperationAsync(null);
+                await RefreshAfterFileOperationAsync(parentPath);
                 UpdateStatus($"Successfully deleted {loraPath}.");
             }
             else
@@ -505,6 +513,14 @@ namespace LoraDbEditor
                 return;
             }
 
+            // Capture parent path before deletion to maintain tree navigation
+            string? parentPath = null;
+            int lastSlashIndex = folderPath.LastIndexOf('/');
+            if (lastSlashIndex > 0)
+            {
+                parentPath = folderPath.Substring(0, lastSlashIndex);
+            }
+
             var result = await _fileOperations.DeleteFolderAsync(folderPath, _database, _galleryBasePath, _allFilePaths);
 
             if (result.Success)
@@ -516,7 +532,7 @@ namespace LoraDbEditor
                     DetailsPanel.Visibility = Visibility.Collapsed;
                 }
 
-                await RefreshAfterFileOperationAsync(null);
+                await RefreshAfterFileOperationAsync(parentPath);
                 UpdateStatus($"Successfully deleted folder {folderPath} and {result.AffectedFileCount} file(s).");
             }
             else
@@ -601,7 +617,12 @@ namespace LoraDbEditor
             if (pathToSelect != null)
             {
                 _treeViewManager.SelectAndExpandPath(FileTreeView, pathToSelect);
-                LoadLoraEntry(pathToSelect);
+
+                // Only load the entry if it's a file (exists in _allFilePaths), not a folder
+                if (_allFilePaths.Contains(pathToSelect))
+                {
+                    LoadLoraEntry(pathToSelect);
+                }
             }
         }
 
