@@ -36,9 +36,8 @@ The application automatically looks for your ComfyUI files in these locations:
 
 - **LoRA Files**: `%USERPROFILE%\Documents\ComfyUI\models\loras\`
 - **Database**: `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers.json`
-- **Gallery Images**: `%USERPROFILE%\Documents\ComfyUI\user\default\user-db\lora-triggers-pictures\`
 
-If you're using a custom ComfyUI installation path, you'll need to ensure these folders exist at the locations above, or the database file will need to be in the standard location.
+If you're using a custom ComfyUI installation path, you'll need to alter these paths in the settings dialog.
 
 ## How to Use
 
@@ -95,7 +94,7 @@ Any additional information about using the LoRA - compatibility notes, tips, spe
 
 ### File ID Warnings
 
-The app validates that your LoRA files haven't been corrupted or modified:
+The app and comfy can keep track of your loras if they are moved/renamed by their file-id (A partial hash of the file).  It also validates that your LoRA files haven't been corrupted or modified:
 
 - ✅ **No Warning** - File is valid
 - 🟧 **Orange Warning** - File ID hasn't been calculated yet (click "Update File ID")
@@ -107,7 +106,9 @@ File IDs help ensure you're using the exact same LoRA file that your trigger wor
 
 - **Multiline Fields**: Active Triggers, All Triggers, and Notes support multiple lines - press Enter to add line breaks
 - **Browser Drag & Drop**: Drag URLs directly from your browser's address bar into the Source URL field
+- **CivitAI download**: Drag lora download links directly from CivitAI.com directly into folders in the navigation panel
 - **Bulk Updates**: You can update multiple LoRAs in one session - just switch between them and save once at the end
+- **Git integration**: If you manage your database folder with git, the app will detect this and allow you to commit changes for both the JSON file and the images.
 - **Backup**: Your database is just a JSON file - back it up regularly!
 - **Image Organization**: The app copies images to a central folder, so you can delete the originals after adding them
 
