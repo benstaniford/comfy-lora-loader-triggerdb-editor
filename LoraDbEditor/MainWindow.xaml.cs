@@ -1231,7 +1231,6 @@ namespace LoraDbEditor
                         FileExists = true,
                         CalculatedFileId = result.FileId,
                         FileIdValid = true,
-                        SourceUrl = url,
                         ActiveTriggers = "",
                         AllTriggers = ""
                     };
