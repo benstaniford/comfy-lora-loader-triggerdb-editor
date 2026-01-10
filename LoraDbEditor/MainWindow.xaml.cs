@@ -203,21 +203,23 @@ namespace LoraDbEditor
             {
                 var filtered = FileSystemScanner.FuzzySearch(_allFilePaths, _pendingSearchText);
 
-                // Preserve the text before updating ItemsSource
+                // Get the textbox before making changes
+                var textBox = SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox) as TextBox;
                 var currentText = _pendingSearchText;
-                SearchComboBox.ItemsSource = filtered;
+                var cursorPosition = textBox?.SelectionStart ?? currentText.Length;
 
-                // Restore the text and cursor position after ComboBox finishes its internal updates
+                // Update ItemsSource and prevent auto-selection
+                SearchComboBox.ItemsSource = filtered;
+                SearchComboBox.SelectedIndex = -1;  // Prevent auto-selection
                 SearchComboBox.Text = currentText;
-                Dispatcher.BeginInvoke(new Action(() =>
+
+                // Immediately fix cursor position (no deferral needed)
+                if (textBox != null)
                 {
-                    if (SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox) is TextBox textBox)
-                    {
-                        textBox.SelectionStart = currentText.Length;
-                        textBox.SelectionLength = 0;
-                        textBox.Focus();
-                    }
-                }), DispatcherPriority.Background);
+                    textBox.Text = currentText;
+                    textBox.SelectionStart = cursorPosition;
+                    textBox.SelectionLength = 0;
+                }
 
                 SearchComboBox.IsDropDownOpen = filtered.Count > 0;
             }
@@ -225,7 +227,8 @@ namespace LoraDbEditor
 
         private void SearchComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (SearchComboBox.SelectedItem is string selectedPath)
+            // Only handle actual user selections, not programmatic clearing
+            if (SearchComboBox.SelectedIndex >= 0 && SearchComboBox.SelectedItem is string selectedPath)
             {
                 // Select the item in the tree view
                 _treeViewManager.SelectAndExpandPath(FileTreeView, selectedPath);
