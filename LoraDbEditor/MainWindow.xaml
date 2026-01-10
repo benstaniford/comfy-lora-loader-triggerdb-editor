@@ -167,8 +167,22 @@
             <Border Grid.Row="1" BorderThickness="1" Background="{StaticResource SurfaceBrush}"
                    Margin="0,0,0,10" Visibility="{Binding SelectedFileVisibility}">
                 <Grid Margin="10">
-                    <TextBlock x:Name="SelectedFileTitle" FontWeight="Bold" FontSize="16"
-                              TextWrapping="Wrap" Foreground="{StaticResource TextBrush}"/>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" x:Name="SelectedFileTitle" FontWeight="Bold" FontSize="16"
+                              TextWrapping="Wrap" Foreground="{StaticResource TextBrush}"
+                              VerticalAlignment="Center"/>
+
+                    <Button Grid.Column="1" x:Name="CopyPathButton"
+                           Content="📋" FontSize="16"
+                           Width="35" Height="35"
+                           Margin="10,0,0,0"
+                           ToolTip="Copy path to clipboard"
+                           Click="CopyPathButton_Click"
+                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
 

@@ -839,6 +839,25 @@ namespace LoraDbEditor
             }
         }
 
+        private void CopyPathButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentEntry == null)
+            {
+                UpdateStatus("No LoRA file selected.");
+                return;
+            }
+
+            try
+            {
+                Clipboard.SetText(_currentEntry.Path);
+                UpdateStatus($"Path copied to clipboard: {_currentEntry.Path}");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error copying to clipboard: {ex.Message}");
+            }
+        }
+
         #endregion
 
         #region Text Field Changes
