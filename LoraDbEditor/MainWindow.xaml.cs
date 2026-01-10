@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using LoraDbEditor.Models;
 using LoraDbEditor.Services;
 
@@ -37,6 +38,10 @@ namespace LoraDbEditor
         private Point _dragStartPoint;
         private TreeViewNode? _draggedNode;
 
+        // Search debounce
+        private DispatcherTimer? _searchDebounceTimer;
+        private string _pendingSearchText = "";
+
         public MainWindow()
         {
             InitializeComponent();
@@ -61,6 +66,13 @@ namespace LoraDbEditor
             {
                 Directory.CreateDirectory(_galleryBasePath);
             }
+
+            // Initialize search debounce timer
+            _searchDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(200)
+            };
+            _searchDebounceTimer.Tick += SearchDebounceTimer_Tick;
         }
 
         private void UpdateStatus(string message)
@@ -168,15 +180,28 @@ namespace LoraDbEditor
             var textBox = sender as TextBox;
             if (textBox == null) return;
 
-            string searchText = textBox.Text;
+            // Store the pending search text
+            _pendingSearchText = textBox.Text;
 
-            if (string.IsNullOrWhiteSpace(searchText))
+            // Reset the debounce timer
+            _searchDebounceTimer?.Stop();
+            _searchDebounceTimer?.Start();
+        }
+
+        private void SearchDebounceTimer_Tick(object? sender, EventArgs e)
+        {
+            // Stop the timer
+            _searchDebounceTimer?.Stop();
+
+            // Perform the search
+            if (string.IsNullOrWhiteSpace(_pendingSearchText))
             {
                 SearchComboBox.ItemsSource = _allFilePaths;
+                SearchComboBox.IsDropDownOpen = false;
             }
             else
             {
-                var filtered = FileSystemScanner.FuzzySearch(_allFilePaths, searchText);
+                var filtered = FileSystemScanner.FuzzySearch(_allFilePaths, _pendingSearchText);
                 SearchComboBox.ItemsSource = filtered;
                 SearchComboBox.IsDropDownOpen = filtered.Count > 0;
             }
