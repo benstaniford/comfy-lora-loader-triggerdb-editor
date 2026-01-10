@@ -177,7 +177,8 @@
                            Margin="10,0,0,0"
                            ToolTip="Copy path to clipboard (converts / to \)"
                            Click="CopyPathButton_Click"
-                           VerticalAlignment="Center"/>
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed"/>
                 </StackPanel>
             </Border>
 

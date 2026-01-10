@@ -485,6 +485,7 @@ namespace LoraDbEditor
                 {
                     _currentEntry = null;
                     DetailsPanel.Visibility = Visibility.Collapsed;
+                    CopyPathButton.Visibility = Visibility.Collapsed;
                 }
 
                 await RefreshAfterFileOperationAsync(parentPath);
@@ -534,6 +535,7 @@ namespace LoraDbEditor
                 {
                     _currentEntry = null;
                     DetailsPanel.Visibility = Visibility.Collapsed;
+                    CopyPathButton.Visibility = Visibility.Collapsed;
                 }
 
                 await RefreshAfterFileOperationAsync(parentPath);
@@ -687,6 +689,7 @@ namespace LoraDbEditor
                 // Update UI
                 SelectedFileTitle.Text = path;
                 DetailsPanel.Visibility = Visibility.Visible;
+                CopyPathButton.Visibility = Visibility.Visible;
 
                 // Display File ID
                 UpdateFileIdDisplay();
