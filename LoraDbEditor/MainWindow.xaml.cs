@@ -202,7 +202,19 @@ namespace LoraDbEditor
             else
             {
                 var filtered = FileSystemScanner.FuzzySearch(_allFilePaths, _pendingSearchText);
+
+                // Preserve the text before updating ItemsSource
+                var currentText = _pendingSearchText;
                 SearchComboBox.ItemsSource = filtered;
+
+                // Restore the text and cursor position
+                SearchComboBox.Text = currentText;
+                if (SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox) is TextBox textBox)
+                {
+                    textBox.SelectionStart = currentText.Length;
+                    textBox.SelectionLength = 0;
+                }
+
                 SearchComboBox.IsDropDownOpen = filtered.Count > 0;
             }
         }
