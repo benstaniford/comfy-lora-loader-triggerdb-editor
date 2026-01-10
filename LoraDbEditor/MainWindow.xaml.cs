@@ -849,8 +849,10 @@ namespace LoraDbEditor
 
             try
             {
-                Clipboard.SetText(_currentEntry.Path);
-                UpdateStatus($"Path copied to clipboard: {_currentEntry.Path}");
+                // Convert forward slashes to backslashes for Windows paths
+                string windowsPath = _currentEntry.Path.Replace("/", "\\");
+                Clipboard.SetText(windowsPath);
+                UpdateStatus($"Path copied to clipboard: {windowsPath}");
             }
             catch (Exception ex)
             {
