@@ -41,6 +41,8 @@ namespace LoraDbEditor
         // Search debounce
         private DispatcherTimer? _searchDebounceTimer;
         private string _pendingSearchText = "";
+        private bool _isUpdatingSearch = false;
+        private TextBox? _searchTextBox;
 
         public MainWindow()
         {
@@ -102,10 +104,11 @@ namespace LoraDbEditor
                 SearchComboBox.ItemsSource = _allFilePaths;
 
                 // Setup text changed event for fuzzy search
-                var textBox = (TextBox)SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox);
-                if (textBox != null)
+                _searchTextBox = (TextBox)SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox);
+                if (_searchTextBox != null)
                 {
-                    textBox.TextChanged += SearchTextBox_TextChanged;
+                    _searchTextBox.TextChanged += SearchTextBox_TextChanged;
+                    _searchTextBox.SelectionChanged += SearchTextBox_SelectionChanged;
                 }
 
                 // Check for git availability
@@ -188,6 +191,21 @@ namespace LoraDbEditor
             _searchDebounceTimer?.Start();
         }
 
+        private void SearchTextBox_SelectionChanged(object sender, RoutedEventArgs e)
+        {
+            // Prevent auto-selection during search updates
+            if (_isUpdatingSearch && _searchTextBox != null)
+            {
+                var cursorPosition = _searchTextBox.SelectionStart;
+                if (_searchTextBox.SelectionLength > 0)
+                {
+                    // Clear selection, keep cursor at current position
+                    _searchTextBox.SelectionLength = 0;
+                    _searchTextBox.SelectionStart = cursorPosition;
+                }
+            }
+        }
+
         private void SearchDebounceTimer_Tick(object? sender, EventArgs e)
         {
             // Stop the timer
@@ -201,27 +219,33 @@ namespace LoraDbEditor
             }
             else
             {
-                var filtered = FileSystemScanner.FuzzySearch(_allFilePaths, _pendingSearchText);
-
-                // Get the textbox before making changes
-                var textBox = SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox) as TextBox;
-                var currentText = _pendingSearchText;
-                var cursorPosition = textBox?.SelectionStart ?? currentText.Length;
-
-                // Update ItemsSource and prevent auto-selection
-                SearchComboBox.ItemsSource = filtered;
-                SearchComboBox.SelectedIndex = -1;  // Prevent auto-selection
-                SearchComboBox.Text = currentText;
-
-                // Immediately fix cursor position (no deferral needed)
-                if (textBox != null)
+                _isUpdatingSearch = true;
+                try
                 {
-                    textBox.Text = currentText;
-                    textBox.SelectionStart = cursorPosition;
-                    textBox.SelectionLength = 0;
-                }
+                    var filtered = FileSystemScanner.FuzzySearch(_allFilePaths, _pendingSearchText);
 
-                SearchComboBox.IsDropDownOpen = filtered.Count > 0;
+                    // Store cursor position before update
+                    var cursorPosition = _searchTextBox?.SelectionStart ?? _pendingSearchText.Length;
+
+                    // Update ItemsSource and prevent auto-selection
+                    SearchComboBox.ItemsSource = filtered;
+                    SearchComboBox.SelectedIndex = -1;
+                    SearchComboBox.Text = _pendingSearchText;
+
+                    // Restore cursor position
+                    if (_searchTextBox != null)
+                    {
+                        _searchTextBox.SelectionStart = cursorPosition;
+                        _searchTextBox.SelectionLength = 0;
+                    }
+
+                    SearchComboBox.IsDropDownOpen = filtered.Count > 0;
+                }
+                finally
+                {
+                    // Use dispatcher to clear flag after all updates complete
+                    Dispatcher.BeginInvoke(new Action(() => _isUpdatingSearch = false), DispatcherPriority.Background);
+                }
             }
         }
 

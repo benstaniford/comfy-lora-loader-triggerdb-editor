@@ -158,10 +158,9 @@
 
                     <ComboBox Grid.Row="1" x:Name="SearchComboBox"
                              IsEditable="True"
-                             TextSearch.TextPath="."
+                             IsTextSearchEnabled="False"
                              Height="30"
                              FontSize="13"
-                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                              SelectionChanged="SearchComboBox_SelectionChanged">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
