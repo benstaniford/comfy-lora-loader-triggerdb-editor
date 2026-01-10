@@ -64,6 +64,15 @@
                 <TextBlock Grid.Row="0" Text="LoRA Files" FontWeight="Bold" FontSize="14"
                           Margin="10" Foreground="{StaticResource TextBrush}"/>
 
+                <!-- Root zone highlight overlay -->
+                <Border Grid.Row="1" x:Name="RootZoneHighlight"
+                       Width="10" HorizontalAlignment="Left"
+                       Background="#4000FF00"
+                       BorderBrush="#FF00FF00"
+                       BorderThickness="0,0,2,0"
+                       Visibility="Collapsed"
+                       IsHitTestVisible="False"/>
+
                 <TreeView Grid.Row="1" x:Name="FileTreeView"
                          Background="{StaticResource SurfaceBrush}"
                          BorderThickness="0"

@@ -53,6 +53,10 @@ namespace LoraDbEditor.Services
                 return DragDropEffects.None;
             }
 
+            // Check if in the root drop zone (leftmost 10 pixels)
+            var position = e.GetPosition(treeView);
+            bool isInRootZone = position.X <= 10;
+
             // Handle file move
             if (isFileDrop && !isUrlDrop)
             {
@@ -61,10 +65,17 @@ namespace LoraDbEditor.Services
                     return DragDropEffects.None;
                 }
 
+                // Allow drop in root zone (leftmost 10 pixels)
+                if (isInRootZone)
+                {
+                    return DragDropEffects.Move;
+                }
+
+                // Only allow drop on folders, not on null background or files
                 if (targetNode == null)
                 {
-                    // Allow drop to root
-                    return DragDropEffects.Move;
+                    // Not in root zone and no target node - reject
+                    return DragDropEffects.None;
                 }
                 else if (targetNode == draggedNode)
                 {
@@ -86,10 +97,16 @@ namespace LoraDbEditor.Services
             // Handle URL drop (download) or .safetensors file drop
             if (isUrlDrop || isSafetensorsFileDrop)
             {
+                // Allow drop in root zone
+                if (isInRootZone)
+                {
+                    return DragDropEffects.Copy;
+                }
+
                 if (targetNode == null)
                 {
-                    // Allow drop to root
-                    return DragDropEffects.Copy;
+                    // Not in root zone - reject
+                    return DragDropEffects.None;
                 }
                 else if (!targetNode.IsFile)
                 {
@@ -232,7 +249,7 @@ namespace LoraDbEditor.Services
         /// <summary>
         /// Gets the status message for a drag operation over the tree view
         /// </summary>
-        public string GetDragStatusMessage(DragEventArgs e, TreeViewNode? targetNode, TreeViewNode? draggedNode)
+        public string GetDragStatusMessage(TreeView treeView, DragEventArgs e, TreeViewNode? targetNode, TreeViewNode? draggedNode)
         {
             bool isUrlDrop = e.Data.GetDataPresent(DataFormats.Text) ||
                             e.Data.GetDataPresent(DataFormats.UnicodeText) ||
@@ -247,24 +264,32 @@ namespace LoraDbEditor.Services
                 isSafetensorsFileDrop = files != null && files.Length > 0 && IsSafetensorsFile(files[0]);
             }
 
+            // Check if in root zone
+            var position = e.GetPosition(treeView);
+            bool isInRootZone = position.X <= 10;
+
             // Handle file move
             if (isFileDrop && !isUrlDrop)
             {
-                if (targetNode == null)
+                if (isInRootZone)
                 {
-                    return "DragOver: Root (null target)";
+                    return "Drop in root zone (left edge) to move to root folder";
+                }
+                else if (targetNode == null)
+                {
+                    return "Drag over a folder to move file";
                 }
                 else if (targetNode == draggedNode)
                 {
-                    return $"DragOver: Can't drop on self ({targetNode.Name})";
+                    return $"Can't drop on self ({targetNode.Name})";
                 }
                 else if (!targetNode.IsFile)
                 {
-                    return $"DragOver: Folder target - {targetNode.Name}";
+                    return $"Drop to move to: {targetNode.Name}";
                 }
                 else
                 {
-                    return $"DragOver: File target (not allowed) - {targetNode.Name}";
+                    return $"Can't drop on files - drop on a folder instead";
                 }
             }
 
@@ -273,21 +298,25 @@ namespace LoraDbEditor.Services
             {
                 string action = isSafetensorsFileDrop ? "copy file" : "download";
 
-                if (targetNode == null)
+                if (isInRootZone)
                 {
-                    return $"Drop here to {action} to root folder";
+                    return $"Drop in root zone to {action} to root folder";
+                }
+                else if (targetNode == null)
+                {
+                    return $"Drag over a folder to {action}";
                 }
                 else if (!targetNode.IsFile)
                 {
-                    return $"Drop here to {action} to: {targetNode.FullPath}";
+                    return $"Drop to {action} to: {targetNode.FullPath}";
                 }
                 else
                 {
-                    return $"Cannot {action} to a file, drop on a folder instead";
+                    return $"Can't {action} to a file, drop on a folder instead";
                 }
             }
 
-            return "DragOver: No valid data";
+            return "No valid data to drop";
         }
 
         /// <summary>

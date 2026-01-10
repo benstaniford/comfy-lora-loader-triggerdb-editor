@@ -230,14 +230,28 @@ namespace LoraDbEditor
             var draggedNode = e.Data.GetData("TreeViewNode") as TreeViewNode;
             var targetNode = _treeViewManager.GetTreeViewNodeAtPoint(FileTreeView, e.GetPosition(FileTreeView));
 
+            // Check if in root zone
+            var position = e.GetPosition(FileTreeView);
+            bool isInRootZone = position.X <= 10;
+
             // Get drag effect
             e.Effects = _dragDropManager.GetDragEffectForTreeView(FileTreeView, e, targetNode, draggedNode);
 
-            // Update status
-            StatusText.Text = _dragDropManager.GetDragStatusMessage(e, targetNode, draggedNode);
+            // Show/hide root zone highlight
+            if (isInRootZone && e.Effects != DragDropEffects.None)
+            {
+                RootZoneHighlight.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                RootZoneHighlight.Visibility = Visibility.Collapsed;
+            }
 
-            // Highlight target if appropriate
-            if (e.Effects != DragDropEffects.None && targetNode != null && !targetNode.IsFile)
+            // Update status
+            StatusText.Text = _dragDropManager.GetDragStatusMessage(FileTreeView, e, targetNode, draggedNode);
+
+            // Highlight target if appropriate (but not if in root zone)
+            if (e.Effects != DragDropEffects.None && !isInRootZone && targetNode != null && !targetNode.IsFile)
             {
                 _dragDropManager.HighlightDragTarget(FileTreeView, targetNode, e.GetPosition(FileTreeView));
             }
@@ -252,15 +266,40 @@ namespace LoraDbEditor
         private void FileTreeView_DragLeave(object sender, DragEventArgs e)
         {
             _dragDropManager.ClearDragHighlight();
+            RootZoneHighlight.Visibility = Visibility.Collapsed;
         }
 
         private async void FileTreeView_Drop(object sender, DragEventArgs e)
         {
             _dragDropManager.ClearDragHighlight();
+            RootZoneHighlight.Visibility = Visibility.Collapsed;
+
+            // Check if in root zone (leftmost 10 pixels)
+            var position = e.GetPosition(FileTreeView);
+            bool isInRootZone = position.X <= 10;
 
             // Get target node
             var targetNode = _treeViewManager.GetTreeViewNodeAtPoint(FileTreeView, e.GetPosition(FileTreeView));
-            string targetDirectory = (targetNode != null && !targetNode.IsFile) ? targetNode.FullPath : "";
+
+            // Determine target directory
+            string targetDirectory;
+            if (isInRootZone)
+            {
+                // Drop in root zone - use root folder
+                targetDirectory = "";
+            }
+            else if (targetNode != null && !targetNode.IsFile)
+            {
+                // Drop on a folder
+                targetDirectory = targetNode.FullPath;
+            }
+            else
+            {
+                // Drop on background or file - reject (shouldn't happen due to DragOver checks)
+                UpdateStatus("Drop must be on a folder or in the root zone (left edge)");
+                e.Handled = true;
+                return;
+            }
 
             // Handle file move (internal drag)
             if (_dragDropManager.IsTreeNodeDrop(e))
