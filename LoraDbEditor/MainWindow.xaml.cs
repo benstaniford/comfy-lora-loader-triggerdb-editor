@@ -207,13 +207,17 @@ namespace LoraDbEditor
                 var currentText = _pendingSearchText;
                 SearchComboBox.ItemsSource = filtered;
 
-                // Restore the text and cursor position
+                // Restore the text and cursor position after ComboBox finishes its internal updates
                 SearchComboBox.Text = currentText;
-                if (SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox) is TextBox textBox)
+                Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    textBox.SelectionStart = currentText.Length;
-                    textBox.SelectionLength = 0;
-                }
+                    if (SearchComboBox.Template.FindName("PART_EditableTextBox", SearchComboBox) is TextBox textBox)
+                    {
+                        textBox.SelectionStart = currentText.Length;
+                        textBox.SelectionLength = 0;
+                        textBox.Focus();
+                    }
+                }), DispatcherPriority.Background);
 
                 SearchComboBox.IsDropDownOpen = filtered.Count > 0;
             }
