@@ -36,7 +36,7 @@
                 AllowDrop="True"
                 PreviewDragOver="AddLoraZone_PreviewDragOver"
                 Drop="AddLoraZone_Drop">
-            <TextBlock Text="Add Lora (Drop file or download link)"
+            <TextBlock Text="Add Lora (Drop file or download link either here or direct to a folder)"
                       HorizontalAlignment="Center"
                       VerticalAlignment="Center"
                       FontSize="16"
