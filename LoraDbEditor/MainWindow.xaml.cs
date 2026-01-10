@@ -224,18 +224,15 @@ namespace LoraDbEditor
                 {
                     var filtered = FileSystemScanner.FuzzySearch(_allFilePaths, _pendingSearchText);
 
-                    // Store cursor position before update
-                    var cursorPosition = _searchTextBox?.SelectionStart ?? _pendingSearchText.Length;
-
                     // Update ItemsSource and prevent auto-selection
                     SearchComboBox.ItemsSource = filtered;
                     SearchComboBox.SelectedIndex = -1;
                     SearchComboBox.Text = _pendingSearchText;
 
-                    // Restore cursor position
+                    // Set cursor to end of text
                     if (_searchTextBox != null)
                     {
-                        _searchTextBox.SelectionStart = cursorPosition;
+                        _searchTextBox.SelectionStart = _pendingSearchText.Length;
                         _searchTextBox.SelectionLength = 0;
                     }
 
@@ -243,8 +240,16 @@ namespace LoraDbEditor
                 }
                 finally
                 {
-                    // Use dispatcher to clear flag after all updates complete
-                    Dispatcher.BeginInvoke(new Action(() => _isUpdatingSearch = false), DispatcherPriority.Background);
+                    // Use dispatcher to clear flag and ensure cursor is at end
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        _isUpdatingSearch = false;
+                        if (_searchTextBox != null)
+                        {
+                            _searchTextBox.SelectionStart = _pendingSearchText.Length;
+                            _searchTextBox.SelectionLength = 0;
+                        }
+                    }), DispatcherPriority.Background);
                 }
             }
         }
