@@ -186,6 +186,10 @@ namespace LoraDbEditor
         {
             if (SearchComboBox.SelectedItem is string selectedPath)
             {
+                // Select the item in the tree view
+                _treeViewManager.SelectAndExpandPath(FileTreeView, selectedPath);
+
+                // Load the entry details
                 LoadLoraEntry(selectedPath);
             }
         }
