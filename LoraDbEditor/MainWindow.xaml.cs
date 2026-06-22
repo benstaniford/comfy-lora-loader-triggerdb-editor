@@ -115,6 +115,7 @@ namespace LoraDbEditor
                 await CheckGitAvailabilityAsync();
 
                 StatusText.Text = $"Ready. Found {_allFilePaths.Count} LoRA files, {_database.GetAllEntries().Count()} database entries.";
+                UpdateUploadButtonState();
             }
             catch (Exception ex)
             {
@@ -719,6 +720,7 @@ namespace LoraDbEditor
         {
             _hasUnsavedChanges = false;
             SaveButton.IsEnabled = false;
+            UpdateUploadButtonState();
 
             // Update git button state
             if (_isGitAvailable && _isGitRepo)
@@ -944,6 +946,7 @@ namespace LoraDbEditor
 
                 _hasUnsavedChanges = true;
                 SaveButton.IsEnabled = true;
+                UpdateUploadButtonState();
 
                 // Reload the entry to refresh UI
                 LoadLoraEntry(_currentEntry.Path);
@@ -1048,7 +1051,14 @@ namespace LoraDbEditor
 
             _hasUnsavedChanges = true;
             SaveButton.IsEnabled = true;
+            UpdateUploadButtonState();
             StatusText.Text = $"Modified: {_currentEntry?.Path}. Don't forget to save!";
+        }
+
+        private void UpdateUploadButtonState()
+        {
+            var sshPath = SettingsDialog.GetSshUploadPath();
+            UploadButton.IsEnabled = !_hasUnsavedChanges && !string.IsNullOrEmpty(sshPath);
         }
 
         private void UpdateSourceUrlLink()
@@ -1235,6 +1245,7 @@ namespace LoraDbEditor
                         // Mark as changed
                         _hasUnsavedChanges = true;
                         SaveButton.IsEnabled = true;
+                        UpdateUploadButtonState();
 
                         // Reload gallery
                         LoadGallery();
@@ -1411,6 +1422,7 @@ namespace LoraDbEditor
                 await _database.SaveAsync();
 
                 _hasUnsavedChanges = false;
+                UpdateUploadButtonState();
                 StatusText.Text = "Database saved successfully.";
                 StatusText.Foreground = (SolidColorBrush)FindResource("SuccessBrush");
 
@@ -1509,6 +1521,59 @@ namespace LoraDbEditor
             }
         }
 
+        private async void UploadButton_Click(object sender, RoutedEventArgs e)
+        {
+            var sshPath = SettingsDialog.GetSshUploadPath();
+            if (string.IsNullOrEmpty(sshPath))
+            {
+                UpdateStatus("No SSH upload path configured. Please set it in Settings.");
+                return;
+            }
+
+            try
+            {
+                UploadButton.IsEnabled = false;
+                StatusText.Text = "Uploading database via SSH...";
+                StatusText.Foreground = (SolidColorBrush)FindResource("TextBrush");
+
+                var localPath = _database.DatabasePath;
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "scp",
+                    Arguments = $"\"{localPath}\" \"{sshPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                var process = Process.Start(psi)!;
+                var stderr = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode == 0)
+                {
+                    StatusText.Text = $"Database uploaded successfully to {sshPath}";
+                    StatusText.Foreground = (SolidColorBrush)FindResource("SuccessBrush");
+                }
+                else
+                {
+                    StatusText.Text = $"Upload failed: {stderr.Trim()}";
+                    StatusText.Foreground = (SolidColorBrush)FindResource("ErrorBrush");
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"Upload error: {ex.Message}";
+                StatusText.Foreground = (SolidColorBrush)FindResource("ErrorBrush");
+            }
+            finally
+            {
+                UpdateUploadButtonState();
+            }
+        }
+
         #endregion
 
         #region Settings
@@ -1520,6 +1585,8 @@ namespace LoraDbEditor
 
             if (settingsDialog.ShowDialog() == true)
             {
+                UpdateUploadButtonState();
+
                 if (settingsDialog.PathsChanged)
                 {
                     await ReloadAfterPathChange();

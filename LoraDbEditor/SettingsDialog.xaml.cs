@@ -11,6 +11,7 @@ namespace LoraDbEditor
         private const string ApiKeyValueName = "CivitaiApiKey";
         private const string DatabasePathValueName = "DatabasePath";
         private const string LorasPathValueName = "LorasPath";
+        private const string SshUploadPathValueName = "SshUploadPath";
 
         private string _originalDatabasePath = string.Empty;
         private string _originalLorasPath = string.Empty;
@@ -61,6 +62,9 @@ namespace LoraDbEditor
                             string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                             LorasPathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
                         }
+
+                        var sshUploadPath = key.GetValue(SshUploadPathValueName) as string;
+                        SshUploadPathTextBox.Text = sshUploadPath ?? "";
                     }
                     else
                     {
@@ -117,6 +121,17 @@ namespace LoraDbEditor
                         if (!string.IsNullOrEmpty(lorasPath))
                         {
                             key.SetValue(LorasPathValueName, lorasPath);
+                        }
+
+                        // Save SSH upload path
+                        var sshUploadPath = SshUploadPathTextBox.Text.Trim();
+                        if (!string.IsNullOrEmpty(sshUploadPath))
+                        {
+                            key.SetValue(SshUploadPathValueName, sshUploadPath);
+                        }
+                        else
+                        {
+                            try { key.DeleteValue(SshUploadPathValueName, false); } catch { }
                         }
 
                         // Check if paths changed
@@ -215,6 +230,28 @@ namespace LoraDbEditor
             // Return default path
             string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             return Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
+        }
+
+        public static string? GetSshUploadPath()
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath))
+                {
+                    if (key != null)
+                    {
+                        var path = key.GetValue(SshUploadPathValueName) as string;
+                        if (!string.IsNullOrWhiteSpace(path))
+                            return path;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors when reading
+            }
+
+            return null;
         }
     }
 }
