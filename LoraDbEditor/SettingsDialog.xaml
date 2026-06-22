@@ -75,7 +75,6 @@
                     Foreground="{StaticResource TextBrush}"
                     FontFamily="Consolas"
                     FontSize="11"
-                    PlaceholderText="e.g. myuser@myhost.com:/data/comfy/loras.json"
                     TextChanged="ApiKeyTextBox_TextChanged"/>
         </Border>
 
