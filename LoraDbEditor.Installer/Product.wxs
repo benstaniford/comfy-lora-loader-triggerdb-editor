@@ -55,6 +55,8 @@
               Source="$(var.LoraDbEditor.TargetDir)LoraDbEditor.runtimeconfig.json" />
         <File Id="LoraDbEditorDepsJsonFile"
               Source="$(var.LoraDbEditor.TargetDir)LoraDbEditor.deps.json" />
+        <!-- Required because INSTALLFOLDER is under the user profile (ICE64) -->
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall"/>
       </Component>
 
       <!-- NuGet Dependencies -->
