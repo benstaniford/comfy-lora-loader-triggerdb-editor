@@ -14,7 +14,7 @@
 
     <Package InstallerVersion="200"
              Compressed="yes"
-             InstallScope="perMachine"
+             InstallScope="perUser"
              Description="$(var.ProductName) Installer"
              Comments="ComfyUI LoRA safetensor file and trigger word database manager" />
 
@@ -24,9 +24,9 @@
     <!-- Note: .NET 8 Runtime required but not checked during installation -->
     <!-- Users should install from: https://dotnet.microsoft.com/download/dotnet/8.0 -->
 
-    <!-- Installation directory structure -->
+    <!-- Installation directory structure (per-user, no elevation required) -->
     <Directory Id="TARGETDIR" Name="SourceDir">
-      <Directory Id="ProgramFiles64Folder">
+      <Directory Id="LocalAppDataFolder">
         <Directory Id="INSTALLFOLDER" Name="LoraDbEditor" />
       </Directory>
 
@@ -40,9 +40,14 @@
     <!-- Components -->
     <DirectoryRef Id="INSTALLFOLDER">
       <Component Id="LoraDbEditorExe" Guid="{2B3C4D5E-6F7A-8B9C-0D1E-2F3A4B5C6D7E}">
+        <RegistryValue Root="HKCU"
+                       Key="Software\LoraDbEditor"
+                       Name="mainExe"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes"/>
         <File Id="LoraDbEditorEXE"
               Source="$(var.LoraDbEditor.TargetDir)LoraDbEditor.exe"
-              KeyPath="yes"
               Checksum="yes" />
         <File Id="LoraDbEditorDLL"
               Source="$(var.LoraDbEditor.TargetDir)LoraDbEditor.dll" />
@@ -54,9 +59,14 @@
 
       <!-- NuGet Dependencies -->
       <Component Id="NewtonsoftJson" Guid="{3C4D5E6F-7A8B-9C0D-1E2F-3A4B5C6D7E8F}">
+        <RegistryValue Root="HKCU"
+                       Key="Software\LoraDbEditor"
+                       Name="newtonsoftJson"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes"/>
         <File Id="NewtonsoftJsonDll"
-              Source="$(var.LoraDbEditor.TargetDir)Newtonsoft.Json.dll"
-              KeyPath="yes" />
+              Source="$(var.LoraDbEditor.TargetDir)Newtonsoft.Json.dll" />
       </Component>
     </DirectoryRef>
 
