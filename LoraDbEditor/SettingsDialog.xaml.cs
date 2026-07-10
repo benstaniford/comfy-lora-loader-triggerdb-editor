@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
+using LoraDbEditor.Services;
 
 namespace LoraDbEditor
 {
@@ -11,6 +12,7 @@ namespace LoraDbEditor
         private const string ApiKeyValueName = "CivitaiApiKey";
         private const string DatabasePathValueName = "DatabasePath";
         private const string LorasPathValueName = "LorasPath";
+        private const string GalleryPathValueName = "GalleryPath";
         private const string SshUploadPathValueName = "SshUploadPath";
 
         private string _originalDatabasePath = string.Empty;
@@ -46,9 +48,8 @@ namespace LoraDbEditor
                         }
                         else
                         {
-                            // Set default path
-                            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                            DatabasePathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers.json");
+                            // Discover a sensible default (Comfy Desktop 2 shared space, else legacy)
+                            DatabasePathTextBox.Text = ComfyPathDiscovery.DiscoverDatabasePath();
                         }
 
                         var lorasPath = key.GetValue(LorasPathValueName) as string;
@@ -58,9 +59,8 @@ namespace LoraDbEditor
                         }
                         else
                         {
-                            // Set default path
-                            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                            LorasPathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
+                            // Discover a sensible default (Comfy Desktop 2 shared space, else legacy)
+                            LorasPathTextBox.Text = ComfyPathDiscovery.DiscoverLorasPath();
                         }
 
                         var sshUploadPath = key.GetValue(SshUploadPathValueName) as string;
@@ -68,10 +68,9 @@ namespace LoraDbEditor
                     }
                     else
                     {
-                        // No registry key yet, set defaults
-                        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                        DatabasePathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers.json");
-                        LorasPathTextBox.Text = Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
+                        // No registry key yet, discover defaults
+                        DatabasePathTextBox.Text = ComfyPathDiscovery.DiscoverDatabasePath();
+                        LorasPathTextBox.Text = ComfyPathDiscovery.DiscoverLorasPath();
                     }
 
                     // Store original values to detect changes
@@ -160,6 +159,27 @@ namespace LoraDbEditor
             StatusTextBlock.Text = "";
         }
 
+        private void DetectButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var databasePath = ComfyPathDiscovery.DiscoverDatabasePath();
+                var lorasPath = ComfyPathDiscovery.DiscoverLorasPath();
+
+                DatabasePathTextBox.Text = databasePath;
+                LorasPathTextBox.Text = lorasPath;
+
+                bool found = Directory.Exists(lorasPath) || File.Exists(databasePath);
+                StatusTextBlock.Text = found
+                    ? "Detected ComfyUI paths. Review and click Save to apply."
+                    : "No ComfyUI install found; filled with legacy defaults.";
+            }
+            catch (Exception ex)
+            {
+                StatusTextBlock.Text = $"Error detecting paths: {ex.Message}";
+            }
+        }
+
         public static string? GetCivitaiApiKey()
         {
             try
@@ -201,9 +221,8 @@ namespace LoraDbEditor
                 // Ignore errors when reading
             }
 
-            // Return default path
-            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            return Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers.json");
+            // Discover a default (Comfy Desktop 2 shared space, else legacy)
+            return ComfyPathDiscovery.DiscoverDatabasePath();
         }
 
         public static string GetLorasPath()
@@ -227,9 +246,39 @@ namespace LoraDbEditor
                 // Ignore errors when reading
             }
 
-            // Return default path
-            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            return Path.Combine(userProfile, "Documents", "ComfyUI", "models", "loras");
+            // Discover a default (Comfy Desktop 2 shared space, else legacy)
+            return ComfyPathDiscovery.DiscoverLorasPath();
+        }
+
+        /// <summary>
+        /// The gallery-pictures directory. Uses an explicit registry override if set, otherwise follows
+        /// the database directory so the gallery always sits beside the configured lora-triggers.json.
+        /// </summary>
+        public static string GetGalleryPath()
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath))
+                {
+                    var path = key?.GetValue(GalleryPathValueName) as string;
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        return path;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors when reading
+            }
+
+            var dbDirectory = Path.GetDirectoryName(GetDatabasePath());
+            if (!string.IsNullOrEmpty(dbDirectory))
+            {
+                return Path.Combine(dbDirectory, "lora-triggers-pictures");
+            }
+
+            return ComfyPathDiscovery.DiscoverGalleryPath();
         }
 
         public static string? GetSshUploadPath()

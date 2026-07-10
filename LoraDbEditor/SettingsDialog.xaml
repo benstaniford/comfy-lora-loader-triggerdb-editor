@@ -105,11 +105,16 @@
                   VerticalAlignment="Top"/>
 
         <!-- Buttons -->
-        <StackPanel Grid.Row="12" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="SaveButton" Content="Save" Width="80" Height="30"
-                   Margin="0,0,10,0" Click="SaveButton_Click" IsDefault="True"/>
-            <Button x:Name="CancelButton" Content="Cancel" Width="80" Height="30"
-                   Click="CancelButton_Click" IsCancel="True"/>
-        </StackPanel>
+        <DockPanel Grid.Row="12" LastChildFill="False">
+            <Button x:Name="DetectButton" Content="Detect ComfyUI paths" Height="30"
+                   Padding="12,0" DockPanel.Dock="Left" Click="DetectButton_Click"
+                   ToolTip="Auto-detect the loras folder and database from your ComfyUI / Comfy Desktop install"/>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                <Button x:Name="SaveButton" Content="Save" Width="80" Height="30"
+                       Margin="0,0,10,0" Click="SaveButton_Click" IsDefault="True"/>
+                <Button x:Name="CancelButton" Content="Cancel" Width="80" Height="30"
+                       Click="CancelButton_Click" IsCancel="True"/>
+            </StackPanel>
+        </DockPanel>
     </Grid>
 </Window>

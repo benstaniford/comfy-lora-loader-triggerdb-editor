@@ -59,9 +59,8 @@ namespace LoraDbEditor
             _gitService = new GitService();
             _dialogService = new DialogService();
 
-            // Set up gallery base path
-            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            _galleryBasePath = Path.Combine(userProfile, "Documents", "ComfyUI", "user", "default", "user-db", "lora-triggers-pictures");
+            // Set up gallery base path (follows the configured/discovered database directory)
+            _galleryBasePath = SettingsDialog.GetGalleryPath();
 
             // Ensure gallery directory exists
             if (!Directory.Exists(_galleryBasePath))
