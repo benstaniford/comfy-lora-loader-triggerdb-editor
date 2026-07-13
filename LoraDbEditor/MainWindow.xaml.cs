@@ -1414,6 +1414,15 @@ namespace LoraDbEditor
         {
             try
             {
+                // Validate the entry being edited before persisting anything.
+                var validationErrors = ValidateCurrentEntry();
+                if (validationErrors.Count > 0)
+                {
+                    StatusText.Text = "Cannot save: " + string.Join(" ", validationErrors);
+                    StatusText.Foreground = (SolidColorBrush)FindResource("ErrorBrush");
+                    return;
+                }
+
                 StatusText.Text = "Saving database...";
                 StatusText.Foreground = (SolidColorBrush)FindResource("TextBrush");
                 SaveButton.IsEnabled = false;
@@ -1437,6 +1446,67 @@ namespace LoraDbEditor
                 StatusText.Foreground = (SolidColorBrush)FindResource("ErrorBrush");
                 SaveButton.IsEnabled = true;
             }
+        }
+
+        /// <summary>
+        /// Validates the fields of the entry currently being edited before it is saved.
+        /// Returns a list of human-readable error messages; an empty list means the entry is valid.
+        /// </summary>
+        private List<string> ValidateCurrentEntry()
+        {
+            var errors = new List<string>();
+
+            if (_currentEntry == null)
+                return errors;
+
+            // Suggested strength must be a single number or a range of two numbers (e.g. "1.0" or "0.8-1.2").
+            var strength = _currentEntry.SuggestedStrength;
+            if (!string.IsNullOrWhiteSpace(strength) && !IsValidStrength(strength))
+            {
+                errors.Add("Suggested Strength must be a number (e.g. 1.0) or a range (e.g. 0.8-1.2).");
+            }
+
+            // Source URL, when present, must be a valid absolute HTTP/HTTPS URL.
+            var url = _currentEntry.SourceUrl;
+            if (!string.IsNullOrWhiteSpace(url) && !IsValidUrl(url))
+            {
+                errors.Add("Source URL must be a valid URL (e.g. https://example.com).");
+            }
+
+            return errors;
+        }
+
+        private static bool IsValidStrength(string value)
+        {
+            var trimmed = value.Trim();
+
+            // A single integer or floating point number.
+            if (double.TryParse(trimmed, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out _))
+            {
+                return true;
+            }
+
+            // A range of two numbers separated by a hyphen (e.g. "0.8-1.2").
+            var match = System.Text.RegularExpressions.Regex.Match(
+                trimmed,
+                @"^\s*(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)\s*$");
+            if (match.Success
+                && double.TryParse(match.Groups[1].Value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out _)
+                && double.TryParse(match.Groups[2].Value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out _))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsValidUrl(string value)
+        {
+            return Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
         }
 
         private async Task CheckGitAvailabilityAsync()
